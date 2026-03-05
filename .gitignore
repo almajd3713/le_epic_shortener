@@ -1,1 +1,9 @@
 local/
+
+# Go relevant files
+*.exe
+*.dll
+*.so
+*.dylib
+build/
+dist/
