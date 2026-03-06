@@ -15,8 +15,9 @@ func NewShortenerService(repo repository.URLRepository) *ShortenerService {
 
 func (s *ShortenerService) ShortenURL(longUrl string) (string, error) {
 	var code string
+	var err error
 	for {
-		code, err := nanoid.New(8)
+		code, err = nanoid.New(8)
 		if err != nil {
 			return "", err
 		}
@@ -28,6 +29,9 @@ func (s *ShortenerService) ShortenURL(longUrl string) (string, error) {
 			return "", err
 		}
 	}
+
+	// Store code to DB
+	_, err = s.repo.Create(code, longUrl, nil)
 
 	return code, nil
 }

@@ -1,8 +1,10 @@
-package server
+package main
 
 import (
 	"context"
 	"os"
+	"strings"
+	"log/slog"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -17,12 +19,27 @@ import (
 func main() {
 	godotenv.Load()
 
-	PORT := ":" + os.Getenv("PORT")
-
-	startServer(PORT)
+	startServer()
 }
 
-func startServer(PORT string) {
+func startServer() {
+	// Setup Logger
+	level := os.Getenv("LOG_LEVEL")
+	var logLevel slog.Level
+	switch strings.ToUpper(level) {
+	case "DEBUG": logLevel = slog.LevelDebug
+	case "WARN": logLevel = slog.LevelWarn
+	case "ERROR": logLevel = slog.LevelError
+	default: logLevel = slog.LevelInfo
+	}
+	
+	opts := &slog.HandlerOptions{
+		Level: logLevel,
+	}
+	logHandler := slog.NewJSONHandler(os.Stdout, opts)
+	logger := slog.New(logHandler)
+	slog.SetDefault(logger)
+
 	// Initialize Database
 	ctx := context.Background()
 	connString := os.Getenv("DATABASE_URL")
@@ -55,6 +72,7 @@ func startServer(PORT string) {
 		*redirectHandler,
 	)
 
+	PORT := os.Getenv("PORT")
 	r.Run(
 		PORT,
 	)

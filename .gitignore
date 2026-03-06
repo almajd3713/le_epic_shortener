@@ -1,4 +1,5 @@
 local/
+**/.env
 
 # Go relevant files
 *.exe
@@ -7,3 +8,5 @@ local/
 *.dylib
 build/
 dist/
+tmp/
+.air.toml
