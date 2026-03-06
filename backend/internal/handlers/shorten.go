@@ -15,7 +15,7 @@ func NewShortenerHandler(shortenerService services.ShortenerService) *ShortenerH
 	return &ShortenerHandler{shortenerService: shortenerService}
 }
 
-func (h *ShortenerHandler) ShortenURL(c *gin.Context) {
+func (h *ShortenerHandler) POST(c *gin.Context) {
 	var req models.URLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request"})

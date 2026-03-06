@@ -7,6 +7,7 @@ import (
 
 func SetupRoutes(r *gin.Engine, 
 	shortenerHandler handlers.ShortenerHandler,
+	redirectHandler handlers.RedirectHandler,
 ) {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -14,5 +15,6 @@ func SetupRoutes(r *gin.Engine,
 		})
 	})
 
-	r.POST("/api/shorten", shortenerHandler.ShortenURL)
+	r.GET("/:code", redirectHandler.GET) 
+	r.POST("/api/shorten", shortenerHandler.POST)
 }
