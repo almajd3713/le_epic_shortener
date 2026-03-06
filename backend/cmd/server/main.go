@@ -42,14 +42,17 @@ func startServer(PORT string) {
 
 	// Services
 	shortenerService := services.NewShortenerService(*urlRepo)
+	redirectService := services.NewRedirectorService(*urlRepo)
 
 	// Handlers
 	shortenerHandler := handlers.NewShortenerHandler(*shortenerService)
+	redirectHandler := handlers.NewRedirectHandler(*redirectService)
 
 	// Routes
 	r := gin.Default()
 	server.SetupRoutes(r,
 		*shortenerHandler,
+		*redirectHandler,
 	)
 
 	r.Run(
