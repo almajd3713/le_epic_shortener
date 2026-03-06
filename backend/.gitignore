@@ -1,0 +1,28 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Compiled bins
+cmd/server/server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built by 'go test'
+*.test  
+
+# Output of 'go coverage'
+*.out
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

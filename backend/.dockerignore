@@ -1,0 +1,23 @@
+# Version control
+.git
+.gitignore
+
+# Secrets
+.env
+.env.*
+
+# Documentation
+*.md
+docs/
+
+# Test files
+*_test.go
+tests/
+
+# Local binaries
+cmd/server/server
+bin/
+
+# Docker files
+Dockerfile
+docker-compose*.yml
