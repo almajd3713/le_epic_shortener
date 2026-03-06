@@ -48,6 +48,31 @@ func (r *URLRepository) GetByCode(code string) (*models.URL, error) {
 	return u, err
 }
 
+func (r *URLRepository) GetAll() ([]models.URL, error) {
+	rows, err := r.pool.Query(
+		context.Background(),
+		`SELECT id, short_code, long_url, created_at, expires_at, is_active
+		 FROM urls
+		 WHERE is_active = TRUE
+		   AND (expires_at IS NULL OR expires_at > NOW())
+		 ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []models.URL
+	for rows.Next() {
+		u, err := scanURL(rows)
+		if err != nil {
+			return nil, err
+		}
+		urls = append(urls, *u)
+	}
+	return urls, rows.Err()
+}
+
 // Deactivates a short code (e.g. once expired)
 func (r *URLRepository) Deactivate(code string) error {
 	tag, err := r.pool.Exec(

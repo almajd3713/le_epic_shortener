@@ -18,7 +18,7 @@ export default defineConfig({
     // In production, the backend must send proper CORS headers.
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'http://localhost:5555',
         changeOrigin: true,
       },
     },

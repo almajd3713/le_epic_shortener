@@ -3,12 +3,12 @@ package models
 import "time"
 
 type URL struct {
-	ID        int64
-	ShortCode string
-	LongURL   string
-	CreatedAt time.Time
-	ExpiresAt *time.Time // nil = no expiration
-	IsActive  bool
+	ID        int64      `json:"id"`
+	ShortCode string     `json:"short_code"`
+	LongURL   string     `json:"long_url"`
+	CreatedAt time.Time  `json:"created_at"`
+	ExpiresAt *time.Time `json:"expires_at"` // nil = no expiration
+	IsActive  bool       `json:"is_active"`
 }
 
 func (u *URL) IsExpired() bool {

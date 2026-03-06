@@ -28,7 +28,7 @@ func main() {
 func startServer() {
 	// Load configuration
 	cfg := config.Load()
-	
+
 	// Setup Logger
 	var logLevel slog.Level
 	switch strings.ToUpper(cfg.LogLevel) {
@@ -72,10 +72,12 @@ func startServer() {
 	urlRepo := repository.NewURLRepository(pool)
 
 	// Services
+	urlService := services.NewURLService(*urlRepo, logger)
 	shortenerService := services.NewShortenerService(*urlRepo, logger)
-	redirectService := services.NewRedirectorService(*urlRepo, logger)
+	redirectService := services.NewRedirectorService(urlService, logger)
 
 	// Handlers
+	urlHandler := handlers.NewURLHandler(urlService)
 	shortenerHandler := handlers.NewShortenerHandler(shortenerService)
 	redirectHandler := handlers.NewRedirectHandler(redirectService)
 
@@ -96,6 +98,7 @@ func startServer() {
 	r.Use(middleware.CORS(corsConfig))
 
 	server.SetupRoutes(r,
+		*urlHandler,
 		*shortenerHandler,
 		*redirectHandler,
 	)

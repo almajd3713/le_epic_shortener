@@ -7,6 +7,7 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, 
+	urlHandler handlers.URLHandler,
 	shortenerHandler handlers.ShortenerHandler,
 	redirectHandler handlers.RedirectHandler,
 ) {
@@ -18,4 +19,5 @@ func SetupRoutes(r *gin.Engine,
 
 	r.GET("/:code", redirectHandler.GET) 
 	r.POST("/api/shorten", shortenerHandler.POST)
+	r.GET("/api/urls", urlHandler.GET_ALL)
 }

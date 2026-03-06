@@ -21,7 +21,7 @@ func Load() *Config {
 	logLevel := os.Getenv("LOG_LEVEL")
 	environment := os.Getenv("ENV")
 
-	allowedOriginsStr := os.Getenv("CORS_ALLOWED_ORIGINS")
+	allowedOriginsStr := os.Getenv("ALLOWED_ORIGINS")
 	allowedOrigins := getOriginsFromEnv(allowedOriginsStr)
 
 	trustedProxiesStr := os.Getenv("TRUSTED_PROXIES")

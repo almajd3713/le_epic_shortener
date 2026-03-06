@@ -46,12 +46,3 @@ func (s *ShortenerService) ShortenURL(longUrl string) (string, error) {
 	s.logger.Info("URL shortened successfully", "short_code", code)
 	return code, nil
 }
-
-func (s *ShortenerService) GetOriginalURL(shortenedURL string) (string, error) {
-	url, err := s.repo.GetByCode(shortenedURL)
-	if err != nil {
-		s.logger.Error("failed to get original URL", "error", err)
-		return "", err
-	}
-	return url.LongURL, nil
-}
