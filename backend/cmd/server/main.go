@@ -1,12 +1,16 @@
 package server
 
 import (
+	"context"
 	"os"
-	"github.com/joho/godotenv"
+
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+
+	"shortener.reeler.com/backend/internal/db"
 )
 
-// Handler struct, to hold paths, 
+// Handler struct, to hold paths,
 
 
 func main() {
@@ -19,6 +23,20 @@ func main() {
 }
 
 func startServer(PORT string) {
+	// Initialize Database
+	ctx := context.Background()
+	connString := os.Getenv("DATABASE_URL")
+	pool, err := db.NewPool(ctx, connString)
+	if err != nil {
+		panic("Failed to connect to database: " + err.Error())
+	}
+	defer pool.Close()
+
+	// Run database migrations
+	if err := db.RunMigrations(ctx, pool); err != nil {
+		panic("Failed to run migrations: " + err.Error())
+	}
+
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{

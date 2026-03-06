@@ -16,7 +16,7 @@ func (h *Handler) Shorten(c *gin.Context) {
 	}
 
 	// Call the service to shorten the URL
-	shortenedURL, err := services.ShortenURL(req.URL)
+	shortenedURL, err := services.ShortenURL(req.LongURL)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Failed to shorten URL"})
 		return

@@ -1,10 +1,30 @@
 package models
 
+import "time"
+
+type URL struct {
+	ID        int64
+	ShortCode string
+	LongURL   string
+	CreatedAt time.Time
+	ExpiresAt *time.Time // nil = no expiration
+	IsActive  bool
+}
+
+func (u *URL) IsExpired() bool {
+	if u.ExpiresAt == nil {
+		return false
+	}
+	return time.Now().After(*u.ExpiresAt)
+}
+
 type URLRequest struct {
-	// validate:"required,url" ensures that the field is required and must be a valid URL
-	URL string `json:"long_url" validate:"required,url"`
+	// validate:"required,url" ensures the field is present and a valid URL.
+	LongURL   string     `json:"long_url"   validate:"required,url"`
+	ExpiresAt *time.Time `json:"expires_at"`
 }
 
 type URLResponse struct {
+	ShortCode    string `json:"short_code"`
 	ShortenedURL string `json:"shortened_url"`
 }
