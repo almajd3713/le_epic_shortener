@@ -9,6 +9,9 @@ import (
 
 	"shortener.reeler.com/backend/internal/db"
 	"shortener.reeler.com/backend/internal/server"
+	"shortener.reeler.com/backend/internal/repository"
+	"shortener.reeler.com/backend/internal/services"
+	"shortener.reeler.com/backend/internal/handlers"
 )
 
 func main() {
@@ -34,8 +37,20 @@ func startServer(PORT string) {
 		panic("Failed to run migrations: " + err.Error())
 	}
 
+	// Repositories
+	urlRepo := repository.NewURLRepository(pool)
+
+	// Services
+	shortenerService := services.NewShortenerService(*urlRepo)
+
+	// Handlers
+	shortenerHandler := handlers.NewShortenerHandler(*shortenerService)
+
+	// Routes
 	r := gin.Default()
-	server.SetupRoutes(r)
+	server.SetupRoutes(r,
+		*shortenerHandler,
+	)
 
 	r.Run(
 		PORT,
