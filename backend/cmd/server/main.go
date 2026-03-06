@@ -6,9 +6,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
+	"shortener.reeler.com/backend/internal/config"
 	"shortener.reeler.com/backend/internal/db"
 	"shortener.reeler.com/backend/internal/handlers"
 	"shortener.reeler.com/backend/internal/middleware"
@@ -24,10 +26,12 @@ func main() {
 }
 
 func startServer() {
+	// Load configuration
+	cfg := config.Load()
+	
 	// Setup Logger
-	level := os.Getenv("LOG_LEVEL")
 	var logLevel slog.Level
-	switch strings.ToUpper(level) {
+	switch strings.ToUpper(cfg.LogLevel) {
 	case "DEBUG":
 		logLevel = slog.LevelDebug
 	case "WARN":
@@ -41,7 +45,7 @@ func startServer() {
 	opts := &slog.HandlerOptions{
 		Level: logLevel,
 	}
-	environment := os.Getenv("ENV")
+	environment := cfg.Environment
 	var logHandler slog.Handler
 	if environment == "production" {
 		logHandler = slog.NewJSONHandler(os.Stdout, opts)
@@ -52,7 +56,7 @@ func startServer() {
 
 	// Initialize Database
 	ctx := context.Background()
-	connString := os.Getenv("DATABASE_URL")
+	connString := cfg.DatabaseURL
 	pool, err := db.NewPool(ctx, connString)
 	if err != nil {
 		panic("Failed to connect to database: " + err.Error())
@@ -77,16 +81,26 @@ func startServer() {
 
 	// Routes
 	r := gin.Default()
+	r.SetTrustedProxies(cfg.TrustedProxies)
 
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger(logger))
+
+	// CORs
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = cfg.AllowedOrigins
+	corsConfig.AllowMethods = []string{"GET", "POST", "DELETE", "OPTIONS"}
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type"}
+	corsConfig.AllowCredentials = false
+
+	r.Use(middleware.CORS(corsConfig))
 
 	server.SetupRoutes(r,
 		*shortenerHandler,
 		*redirectHandler,
 	)
 
-	PORT := ":" + os.Getenv("PORT")
+	PORT := cfg.Port
 	logger.Info("Server starting on port " + PORT)
 	r.Run(
 		PORT,
