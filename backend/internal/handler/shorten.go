@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (h *Handler) Shorten(c *gin.Context) {
+func ShortenURL(c *gin.Context) {
 	var req models.URLRequest
 
 	// Validate JSON body
