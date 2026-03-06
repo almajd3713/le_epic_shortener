@@ -3,22 +3,13 @@ import type { ShortenResponse, URLRecord } from '../types';
 // The Vite dev server proxies /api/* to the Go backend (see vite.config.ts),
 // so API calls use relative paths — no CORS issue in development.
 //
-// Short redirect URLs (e.g. http://localhost:8080/abc123) must point directly
-// at the Go server, so we need its origin separately.
-const REDIRECT_BASE: string =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8080';
-
-/** Returns the full redirect URL for a given short code. */
-export function buildShortUrl(code: string): string {
-  return `${REDIRECT_BASE}/${code}`;
-}
 
 /**
  * POST /api/shorten
  * Resolves with the short code on success.
  * Throws an Error with a human-readable message on failure.
  */
-export async function shortenURL(longUrl: string): Promise<string> {
+export async function shortenURL(longUrl: string): Promise<ShortenResponse> {
   const res = await fetch('/api/shorten', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -31,7 +22,7 @@ export async function shortenURL(longUrl: string): Promise<string> {
   }
 
   const data = (await res.json()) as ShortenResponse;
-  return data.shortened_url;
+  return data;
 }
 
 /**

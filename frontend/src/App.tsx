@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react';
 import { ShortenForm } from './components/ShortenForm';
 import { LinksList } from './components/LinksList';
-import { listURLs, buildShortUrl } from './api/client';
+import { listURLs, } from './api/client';
 import type { LinkItem, URLRecord } from './types';
 
 function urlRecordToLinkItem(record: URLRecord): LinkItem {
   return {
     shortCode: record.short_code,
     longUrl: record.long_url,
-    shortUrl: buildShortUrl(record.short_code),
+    shortUrl: record.short_url,
     createdAt: record.created_at,
   };
 }

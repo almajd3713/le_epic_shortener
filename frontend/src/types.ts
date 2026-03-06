@@ -8,7 +8,9 @@ export interface LinkItem {
 
 // ShortenResponse mirrors the JSON body returned by POST /api/shorten.
 export interface ShortenResponse {
-  shortened_url: string; // the short code only — frontend builds the full URL
+  short_code: string;
+  short_url: string;
+  created_at: string; // ISO 8601
 }
 
 // URLRecord mirrors the JSON shape that GET /api/urls will return once the
@@ -16,6 +18,7 @@ export interface ShortenResponse {
 export interface URLRecord {
   short_code: string;
   long_url: string;
+  short_url: string
   created_at: string;
   expires_at: string | null;
 }

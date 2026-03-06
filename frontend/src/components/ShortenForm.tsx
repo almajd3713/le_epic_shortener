@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { shortenURL, buildShortUrl } from '../api/client';
+import { shortenURL, } from '../api/client';
 import type { LinkItem } from '../types';
 
 interface Props {
@@ -21,12 +21,12 @@ export function ShortenForm({ onShortened }: Props) {
     setLoading(true);
 
     try {
-      const code = await shortenURL(url);
+      const { short_code, short_url, created_at } = await shortenURL(url);
       const item: LinkItem = {
-        shortCode: code,
+        shortCode: short_code,
         longUrl: url,
-        shortUrl: buildShortUrl(code),
-        createdAt: new Date().toISOString(),
+        shortUrl: short_url,
+        createdAt: created_at
       };
       setResult(item);
       onShortened(item);
