@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"log/slog"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -28,9 +29,9 @@ func (r *RedirectHandler) GET(c *gin.Context) {
 	originalURL, err := r.service.Redirect(shortCode)
 	if err != nil {
 		reqLogger.Error("failed to redirect URL", "error", err)
-		c.JSON(404, gin.H{"error": "URL not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "URL not found"})
 		return
 	}
 
-	c.Redirect(302, originalURL)
+	c.Redirect(http.StatusFound, originalURL)
 }

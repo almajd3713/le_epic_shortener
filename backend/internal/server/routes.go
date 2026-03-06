@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"github.com/gin-gonic/gin"
 	"shortener.reeler.com/backend/internal/handlers"
 )
@@ -10,7 +11,7 @@ func SetupRoutes(r *gin.Engine,
 	redirectHandler handlers.RedirectHandler,
 ) {
 	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})
 	})
