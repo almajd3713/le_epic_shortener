@@ -26,6 +26,6 @@ type URLRequest struct {
 
 type URLResponse struct {
 	ShortCode    string `json:"short_code"`
-	ShortenedURL string `json:"shortened_url"`
+	ShortenedURL string `json:"short_url"`
 	CreatedAt	 string `json:"created_at"`
 }
