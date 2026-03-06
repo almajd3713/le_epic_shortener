@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -12,6 +13,7 @@ import (
 
 type URLRepository struct {
 	pool *pgxpool.Pool
+	logger *slog.Logger
 }
 
 func NewURLRepository(pool *pgxpool.Pool) *URLRepository {

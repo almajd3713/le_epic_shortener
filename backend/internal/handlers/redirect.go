@@ -1,23 +1,33 @@
 package handlers
 
 import (
+	"log/slog"
+
 	"github.com/gin-gonic/gin"
 
 	"shortener.reeler.com/backend/internal/services"
 )
 
 type RedirectHandler struct {
-	redirectService services.RedirectorService
+	service *services.RedirectorService
+	logger  *slog.Logger
 }
 
-func NewRedirectHandler(redirectService services.RedirectorService) *RedirectHandler {
-	return &RedirectHandler{redirectService: redirectService}
+func NewRedirectHandler(redirectService *services.RedirectorService) *RedirectHandler {
+	return &RedirectHandler{service: redirectService}
 }
 
 func (r *RedirectHandler) GET(c *gin.Context) {
+	logger, ok := c.Get("logger")
+	if !ok {
+		logger = r.logger
+	}
+	reqLogger := logger.(*slog.Logger).With("handler", "RedirectHandler")
+
 	shortCode := c.Param("code")
-	originalURL, err := r.redirectService.Redirect(shortCode)
+	originalURL, err := r.service.Redirect(shortCode)
 	if err != nil {
+		reqLogger.Error("failed to redirect URL", "error", err)
 		c.JSON(404, gin.H{"error": "URL not found"})
 		return
 	}
