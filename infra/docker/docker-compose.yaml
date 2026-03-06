@@ -1,0 +1,69 @@
+
+services:
+  api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    ports:
+      - 8080:8080
+    environment:
+      - PORT=${PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - ENV=${ENV}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:${PORT}/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    ports:
+      - 3000:80
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=shortener_user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=shortener
+    ports:
+      - 5433:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shortener_user -d shortener"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  cache:
+    image: redis
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:

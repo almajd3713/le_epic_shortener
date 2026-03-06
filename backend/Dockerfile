@@ -1,18 +1,16 @@
 # Build stage
-FROM golang:1.25.6-alpine as builder
+FROM golang:1.25-alpine AS builder
 WORKDIR /app
-COPY mod.sum mod.lock ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
 
-# Runtime stage
+# Runtime stage — migrations are embedded in the binary, no extra files needed
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/server .
-# Migrations
-COPY --from=builder /app/internal/db/migrations ./internal/db/migrations
 
 EXPOSE 8080
 CMD ["./server"]
