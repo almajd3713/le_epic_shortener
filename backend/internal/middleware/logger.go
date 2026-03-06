@@ -9,7 +9,9 @@ import (
 )
 
 func Logger(logger *slog.Logger) gin.HandlerFunc {
+	healthEndpoint := "/health"
 	return func(c *gin.Context) {
+		
 		start := time.Now()
 		path := c.Request.URL.Path
 		method := c.Request.Method
@@ -32,6 +34,13 @@ func Logger(logger *slog.Logger) gin.HandlerFunc {
 		// Post-Request Logging
 		duration := time.Since(start)
 		statusCode := c.Writer.Status()
+
+		if path == healthEndpoint {
+			if statusCode >= 400 {
+				reqLogger.Warn("Health check failed", slog.Int("status", statusCode))
+			}
+			return
+		}
 
 		reqLogger.Info("Request completed",
 			slog.Int("status", statusCode),
