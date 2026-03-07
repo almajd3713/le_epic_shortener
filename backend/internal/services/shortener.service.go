@@ -2,6 +2,7 @@ package services
 
 import (
 	"log/slog"
+	"context"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
 	"shortener.reeler.com/backend/internal/models"
@@ -18,7 +19,7 @@ func NewShortenerService(repo repository.URLRepository, cacheSvc ICacheService, 
 	return &ShortenerService{repo: repo, cacheSvc: cacheSvc, logger: logger}
 }
 
-func (s *ShortenerService) ShortenURL(longUrl string) (*models.URL, error) {
+func (s *ShortenerService) ShortenURL(c context.Context, longUrl string) (*models.URL, error) {
 	s.logger.Debug("shortening URL", "long_url", longUrl)
 
 	var code string
@@ -46,7 +47,7 @@ func (s *ShortenerService) ShortenURL(longUrl string) (*models.URL, error) {
 	}
 
 	// Cache the new URL for faster access
-	err = s.cacheSvc.Set(code, longUrl, 24*3600) // Cache for 24 hours
+	err = s.cacheSvc.Set(c, code, longUrl, 24*3600) // Cache for 24 hours
 	if err != nil {
 		s.logger.Error("failed to cache new URL", "error", err)
 	}

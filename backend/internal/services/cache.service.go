@@ -13,11 +13,11 @@ type cacheService struct {
 	cacheClient *redis.Client
 }
 
-func NewCacheService(ctx context.Context, cacheClient *redis.Client, logger *slog.Logger) (*cacheService, error) {
+func NewCacheService(cacheClient *redis.Client, logger *slog.Logger) (*cacheService) {
 	return &cacheService{
 		logger:      logger,
 		cacheClient: cacheClient,
-	}, nil
+	}
 }
 
 func (c *cacheService) Get(ctx context.Context, key string) (string, error) {
