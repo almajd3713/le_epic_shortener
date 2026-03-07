@@ -1,5 +1,6 @@
 # Dependencies (pnpm installs these)
 node_modules/
+.pnpm-store/
 
 # Build output (Vite produces this)
 dist/

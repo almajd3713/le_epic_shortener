@@ -13,6 +13,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
+    host: true,
     // Proxy /api/* to the Go backend during development.
     // This lets the browser make same-origin requests, sidestepping CORS for dev.
     // In production, the backend must send proper CORS headers.
