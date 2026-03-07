@@ -10,11 +10,12 @@ import (
 
 type ShortenerService struct {
 	repo   repository.URLRepository
+	cacheSvc ICacheService
 	logger *slog.Logger
 }
 
-func NewShortenerService(repo repository.URLRepository, logger *slog.Logger) *ShortenerService {
-	return &ShortenerService{repo: repo, logger: logger}
+func NewShortenerService(repo repository.URLRepository, cacheSvc ICacheService, logger *slog.Logger) *ShortenerService {
+	return &ShortenerService{repo: repo, cacheSvc: cacheSvc, logger: logger}
 }
 
 func (s *ShortenerService) ShortenURL(longUrl string) (*models.URL, error) {
@@ -42,6 +43,12 @@ func (s *ShortenerService) ShortenURL(longUrl string) (*models.URL, error) {
 	if err != nil {
 		s.logger.Error("failed to create URL entry", "error", err)
 		return nil, err
+	}
+
+	// Cache the new URL for faster access
+	err = s.cacheSvc.Set(code, longUrl, 24*3600) // Cache for 24 hours
+	if err != nil {
+		s.logger.Error("failed to cache new URL", "error", err)
 	}
 
 	s.logger.Info("URL shortened successfully", "short_code", code)
