@@ -8,6 +8,7 @@ A self-hosted URL shortener built with Go, PostgreSQL, and React.
 - **Frontend** — React 19, Vite, Tailwind CSS v4, TypeScript
 - **Database** — PostgreSQL
 - **Dev tooling** — Air (live reload), pnpm
+- **Containerization** — Docker, Docker Compose
 
 ## Running locally
 
@@ -50,6 +51,39 @@ pnpm dev
 ```
 
 The dev server starts at `http://localhost:5173` and proxies `/api/*` to the Go backend at `http://localhost:5555`.
+
+## Running with Docker
+
+**Prerequisites:** Docker with the Compose plugin.
+
+```bash
+cd infra/docker
+docker compose up --build
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8080 |
+| PostgreSQL | localhost:5433 (host-mapped; internal port 5432) |
+| Redis | localhost:6379 |
+
+Container-to-container communication uses internal Docker network names (`db`, `cache`, `api`).
+The host-side PostgreSQL port is mapped to `5433` to avoid conflicting with a locally running instance.
+
+### Configuration
+
+Edit `infra/docker/.env` before starting:
+
+```env
+PORT=8080
+DATABASE_URL=postgres://shortener_user:password@db:5432/shortener
+ENV=development
+ALLOWED_ORIGINS=http://localhost:3000
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+`VITE_API_BASE_URL` is injected as a Docker build arg and baked into the frontend bundle at build time. Change it and rebuild (`docker compose up --build`) if the backend is at a different address.
 
 ## API
 
