@@ -41,4 +41,5 @@ type URLListItem struct {
 	ShortURL  string  `json:"short_url"`
 	CreatedAt string  `json:"created_at"`
 	ExpiresAt *string `json:"expires_at"`
+	IsActive  bool    `json:"is_active"`
 }

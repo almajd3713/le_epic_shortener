@@ -26,14 +26,14 @@ func (h *URLHandler) GET(c *gin.Context) {
 	}
 	reqLogger := logger.(*slog.Logger).With("handler", "GET")
 
-	shortCode := c.Param("shortCode")
+	shortCode := c.Param("code")
 	longURL, err := h.service.GetOriginalURL(c, shortCode)
 	if err != nil {
 		reqLogger.Error("failed to get long URL", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Short URL not found"})
 		return
 	}
-	c.Redirect(http.StatusMovedPermanently, longURL)
+	c.JSON(http.StatusOK, gin.H{"long_url": longURL})
 }
 
 func (h *URLHandler) GET_ALL(c *gin.Context) {
@@ -63,6 +63,7 @@ func (h *URLHandler) GET_ALL(c *gin.Context) {
 			ShortURL:  baseURL.(string) + "/" + u.ShortCode,
 			CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 			ExpiresAt: expiresAt,
+			IsActive:  u.IsActive,
 		}
 	}
 	c.JSON(http.StatusOK, items)
@@ -76,7 +77,7 @@ func (h *URLHandler) PATCH(c *gin.Context) {
 	}
 	reqLogger := logger.(*slog.Logger).With("handler", "URLHandler")
 
-	shortCode := c.Param("shortCode")
+	shortCode := c.Param("code")
 
 	var req models.URLUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -84,7 +85,7 @@ func (h *URLHandler) PATCH(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
-	
+
 	switch req.Action {
 	case "activate":
 		err := h.service.ActivateURL(c, shortCode)
@@ -108,7 +109,6 @@ func (h *URLHandler) PATCH(c *gin.Context) {
 	}
 }
 
-
 func (h *URLHandler) DELETE(c *gin.Context) {
 	logger, ok := c.Get("logger")
 	if !ok {
@@ -116,7 +116,7 @@ func (h *URLHandler) DELETE(c *gin.Context) {
 	}
 	reqLogger := logger.(*slog.Logger).With("handler", "URLHandler")
 
-	shortCode := c.Param("shortCode")
+	shortCode := c.Param("code")
 	err := h.service.DeleteURL(c, shortCode)
 	if err != nil {
 		reqLogger.Error("failed to delete URL", "error", err)

@@ -1,8 +1,9 @@
 package services
 
 import (
-	"log/slog"
 	"context"
+	"log/slog"
+	"time"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
 	"shortener.reeler.com/backend/internal/models"
@@ -10,16 +11,16 @@ import (
 )
 
 type ShortenerService struct {
-	repo   repository.URLRepository
+	repo     repository.URLRepository
 	cacheSvc ICacheService
-	logger *slog.Logger
+	logger   *slog.Logger
 }
 
 func NewShortenerService(repo repository.URLRepository, cacheSvc ICacheService, logger *slog.Logger) *ShortenerService {
 	return &ShortenerService{repo: repo, cacheSvc: cacheSvc, logger: logger}
 }
 
-func (s *ShortenerService) ShortenURL(c context.Context, longUrl string) (*models.URL, error) {
+func (s *ShortenerService) ShortenURL(c context.Context, longUrl string, expiresAt *time.Time) (*models.URL, error) {
 	s.logger.Debug("shortening URL", "long_url", longUrl)
 
 	var code string
@@ -40,14 +41,20 @@ func (s *ShortenerService) ShortenURL(c context.Context, longUrl string) (*model
 	}
 
 	// Store code to DB
-	newUrl, err := s.repo.Create(code, longUrl, nil)
+	newUrl, err := s.repo.Create(code, longUrl, expiresAt)
 	if err != nil {
 		s.logger.Error("failed to create URL entry", "error", err)
 		return nil, err
 	}
 
-	// Cache the new URL for faster access
-	err = s.cacheSvc.Set(c, code, longUrl, 24*3600) // Cache for 24 hours
+	// Cache the new URL — TTL matches the URL's expiry, or 24h if none set
+	var cacheTTL time.Duration
+	if expiresAt != nil {
+		cacheTTL = time.Until(*expiresAt)
+	} else {
+		cacheTTL = 24 * time.Hour
+	}
+	err = s.cacheSvc.Set(c, code, longUrl, cacheTTL)
 	if err != nil {
 		s.logger.Error("failed to cache new URL", "error", err)
 	}

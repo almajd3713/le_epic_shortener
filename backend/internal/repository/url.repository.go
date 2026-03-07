@@ -12,7 +12,7 @@ import (
 )
 
 type URLRepository struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
 	logger *slog.Logger
 }
 
@@ -53,8 +53,6 @@ func (r *URLRepository) GetAll() ([]models.URL, error) {
 		context.Background(),
 		`SELECT id, short_code, long_url, created_at, expires_at, is_active
 		 FROM urls
-		 WHERE is_active = TRUE
-		   AND (expires_at IS NULL OR expires_at > NOW())
 		 ORDER BY created_at DESC`,
 	)
 	if err != nil {

@@ -19,18 +19,7 @@ func NewRedirectorService(urlSvc IURLService, cacheSvc ICacheService, logger *sl
 
 func (r *RedirectorService) Redirect(c context.Context, shortCode string) (string, error) {
 	r.logger.Debug("redirecting short code", "short_code", shortCode)
-	// Check cache first
-	cachedURL, err := r.cacheSvc.Get(c, shortCode)
-	if err != nil {
-		r.logger.Error("cache error during redirect", "error", err)
-	} else if cachedURL != "" {
-		r.logger.Debug("cache hit during redirect", "short_code", shortCode)
-		return cachedURL, nil
-	} else {
-		r.logger.Debug("cache miss during redirect", "short_code", shortCode)
-	}
 
-	// Cache miss, get from DB
 	url, err := r.urlSvc.GetOriginalURL(c, shortCode)
 	if err != nil {
 		r.logger.Error("failed to redirect URL", "error", err)
@@ -39,7 +28,9 @@ func (r *RedirectorService) Redirect(c context.Context, shortCode string) (strin
 
 	// Store in cache for future requests
 	err = r.cacheSvc.Set(c, shortCode, url, 24*3600) // Cache for 24 hours
-	
-	
+	if err != nil {
+		r.logger.Error("failed to cache original URL", "error", err)
+	}
+
 	return url, nil
 }

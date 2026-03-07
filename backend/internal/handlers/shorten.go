@@ -33,7 +33,7 @@ func (h *ShortenerHandler) POST(c *gin.Context) {
 		return
 	}
 
-	newUrl, err := h.service.ShortenURL(c, req.LongURL)
+	newUrl, err := h.service.ShortenURL(c, req.LongURL, req.ExpiresAt)
 	if err != nil {
 		reqLogger.Error("failed to shorten URL", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to shorten URL"})
