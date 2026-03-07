@@ -20,4 +20,7 @@ func SetupRoutes(r *gin.Engine,
 	r.GET("/:code", redirectHandler.GET) 
 	r.POST("/api/shorten", shortenerHandler.POST)
 	r.GET("/api/urls", urlHandler.GET_ALL)
+
+	r.PATCH("/api/toggle/:code", urlHandler.PATCH)
+	r.DELETE("/api/delete/:code", urlHandler.DELETE)
 }
