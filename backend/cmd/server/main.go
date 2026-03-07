@@ -69,7 +69,7 @@ func startServer() {
 	}
 
 	// Cache
-	cacheClient, err := cache.NewRedisClient(ctx, cfg.CacheURL)
+	cacheClient, err := cache.NewRedisClient(ctx, cfg.Cache)
 	if err != nil {
 		panic("Failed to connect to cache: " + err.Error())
 	}

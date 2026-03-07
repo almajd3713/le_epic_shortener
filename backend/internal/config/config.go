@@ -2,59 +2,86 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
 	Port        string
 	BaseURL     string
 	DatabaseURL string
-	CacheURL	string
 	LogLevel    string
 	Environment string
 
 	AllowedOrigins []string
 	TrustedProxies []string
+
+	Cache CacheConfig
+}
+
+type CacheConfig struct {
+	URL             string
+	MaxRetries      int
+	MinRetryBackoff time.Duration
+	MaxRetryBackoff time.Duration
 }
 
 func Load() *Config {
-	port := ":" + os.Getenv("PORT")
-	baseURL := os.Getenv("BASE_URL")
-	databaseURL := os.Getenv("DATABASE_URL")
-	cacheURL := os.Getenv("REDIS_URL")
-	logLevel := os.Getenv("LOG_LEVEL")
-	environment := os.Getenv("ENV")
-
-	allowedOriginsStr := os.Getenv("ALLOWED_ORIGINS")
-	allowedOrigins := getOriginsFromEnv(allowedOriginsStr)
-
-	trustedProxiesStr := os.Getenv("TRUSTED_PROXIES")
-	trustedProxies := getOriginsFromEnv(trustedProxiesStr)
-
 	return &Config{
-		Port:           port,
-		BaseURL:        baseURL,
-		DatabaseURL:    databaseURL,
-		CacheURL:       cacheURL,
-		LogLevel:       logLevel,
-		Environment:    environment,
-		AllowedOrigins: allowedOrigins,
-		TrustedProxies: trustedProxies,
+		Port:           ":" + getEnv("PORT", "8080"),
+		BaseURL:        getEnv("BASE_URL", "http://localhost:8080"),
+		DatabaseURL:    getEnv("DATABASE_URL", "postgresql://user:password@localhost/db"),
+		LogLevel:       getEnv("LOG_LEVEL", "info"),
+		Environment:    getEnv("ENV", "development"),
+		AllowedOrigins: getEnvURLs("ALLOWED_ORIGINS", []string{"http://localhost:8080"}),
+		TrustedProxies: getEnvURLs("TRUSTED_PROXIES", []string{"http://localhost:8080"}),
+
+		Cache: CacheConfig{
+			URL:             getEnv("REDIS_URL", "redis://localhost:6379"),
+			MaxRetries:      getEnvInt("REDIS_MAX_RETRIES", 3),
+			MinRetryBackoff: getEnvDuration("REDIS_MIN_RETRY_BACKOFF", time.Second),
+			MaxRetryBackoff: getEnvDuration("REDIS_MAX_RETRY_BACKOFF", 10*time.Second),
+		},
 	}
 }
 
-func getOriginsFromEnv(str string) []string {
-	if str == "" {
-		return []string{}
+func getEnv(key string, defaultValue string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
 	}
-	origins := strings.Split(str, ",")
-	result := make([]string, 0, len(origins))
+	return defaultValue
+}
 
-	for _, origin := range origins {
-		trimmed := strings.TrimSpace(origin)
-		if trimmed != "" {
-			result = append(result, trimmed)
+func getEnvInt(key string, defaultValue int) int {
+	if val := os.Getenv(key); val != "" {
+		if i, err := strconv.Atoi(val); err == nil {
+			return i
 		}
 	}
-	return result
+	return defaultValue
+}
+
+func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
+	if val := os.Getenv(key); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			return d
+		}
+	}
+	return defaultValue
+}
+
+func getEnvURLs(key string, defaultValue []string) []string {
+	if val := os.Getenv(key); val != "" {
+		origins := strings.Split(val, ",")
+		result := make([]string, 0, len(origins))
+		for _, origin := range origins {
+			trimmed := strings.TrimSpace(origin)
+			if trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		return result
+	}
+	return defaultValue
 }
