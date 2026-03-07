@@ -28,8 +28,13 @@ export default defineConfig({
         target: process.env.VITE_API_URL ?? 'http://localhost:8080',
         changeOrigin: true,
         bypass(req) {
-          // Let Vite serve the SPA entry point and static assets normally.
-          if (req.url === '/' || req.url?.match(/\.(html|js|ts|css|ico|png|svg|map)(\?.*)?$/)) {
+          // Let Vite serve the SPA entry point, static assets, and Vite internals normally.
+          if (
+            req.url === '/' ||
+            req.url?.startsWith('/@') ||
+            req.url?.startsWith('/__') ||
+            req.url?.match(/\.(html|js|ts|css|ico|png|svg|map)(\?.*)?$/)
+          ) {
             return req.url;
           }
         },
