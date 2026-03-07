@@ -19,6 +19,23 @@ func NewURLHandler(urlService *services.URLService) *URLHandler {
 	return &URLHandler{service: urlService}
 }
 
+func (h *URLHandler) GET(c *gin.Context) {
+	logger, ok := c.Get("logger")
+	if !ok {
+		logger = slog.New(slog.NewTextHandler(nil, nil))
+	}
+	reqLogger := logger.(*slog.Logger).With("handler", "GET")
+
+	shortCode := c.Param("shortCode")
+	longURL, err := h.service.GetOriginalURL(c, shortCode)
+	if err != nil {
+		reqLogger.Error("failed to get long URL", "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Short URL not found"})
+		return
+	}
+	c.Redirect(http.StatusMovedPermanently, longURL)
+}
+
 func (h *URLHandler) GET_ALL(c *gin.Context) {
 	logger, ok := c.Get("logger")
 	if !ok {
