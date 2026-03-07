@@ -19,8 +19,20 @@ export default defineConfig({
     // In production, the backend must send proper CORS headers.
     proxy: {
       '/api': {
-        target: 'http://localhost:5555',
+        target: process.env.VITE_API_URL ?? 'http://localhost:8080',
         changeOrigin: true,
+      },
+      // Forward short-code redirects (/:code) to the backend.
+      // Regex excludes known frontend assets so the SPA still loads normally.
+      '^/[^/]+$': {
+        target: process.env.VITE_API_URL ?? 'http://localhost:8080',
+        changeOrigin: true,
+        bypass(req) {
+          // Let Vite serve the SPA entry point and static assets normally.
+          if (req.url === '/' || req.url?.match(/\.(html|js|ts|css|ico|png|svg|map)(\?.*)?$/)) {
+            return req.url;
+          }
+        },
       },
     },
   },

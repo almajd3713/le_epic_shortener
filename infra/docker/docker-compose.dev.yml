@@ -8,10 +8,10 @@ services:
       - 8080:8080
     environment:
       - PORT=${PORT}
-      - BASE_URL=${BASE_URL}
       - DATABASE_URL=${DATABASE_URL}
       - ENV=development
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - ALLOWED_ORIGINS=http://localhost:5173
+      - BASE_URL=http://localhost:5173
       
     volumes:
       - ../../backend:/app
@@ -34,7 +34,7 @@ services:
                     pnpm install &&
                     pnpm run dev -- --host 0.0.0.0"
     environment:
-      - VITE_API_URL=http://localhost:8080
+      - VITE_API_URL=http://api:8080
       - BASE_URL=http://localhost:3000
     healthcheck: {}
     depends_on:
