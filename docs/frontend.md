@@ -39,7 +39,7 @@ App
 `App` owns the single `links: LinkItem[]` array:
 
 - On mount, `listURLs()` fetches existing links from `GET /api/urls` and populates the list.
-  If the response is `404` (endpoint not available), the list starts empty — no error is shown.
+  If the request fails, the list starts empty — no error is shown.
 - When the user shortens a new URL, `ShortenForm` calls `onShortened(item)`, which prepends
   the new item to `links` so it appears at the top of the table immediately.
 
@@ -53,13 +53,15 @@ Vite dev proxy handles routing in development — no hardcoded ports in fetch ca
 ### `shortenURL(longUrl: string)`
 
 `POST /api/shorten` — submits a long URL and returns the response object from the backend.
+The fully-formed `short_url` is built server-side using the backend's `BASE_URL` env var
+and returned directly in the response.
 
 On a non-OK response it throws an `Error` with the `error` field from the JSON body, or a
 generic message including the HTTP status code. The caller (`ShortenForm`) surfaces this in the UI.
 
 ### `listURLs()`
 
-`GET /api/urls` — returns the full list of active URLs, or `null` on `404`.
+`GET /api/urls` — returns the full list of active URLs, or `null` on failure.
 
 ### `buildShortUrl(code: string)`
 
@@ -82,20 +84,29 @@ components decoupled from the raw API shape.
 
 The Vite dev server runs on `http://localhost:5173` by default.
 
-`vite.config.ts` proxies `/api/*` to `http://localhost:5555` (the Go backend):
+`vite.config.ts` proxies both API calls and short-code redirects to the Go backend:
 
 ```ts
 proxy: {
   '/api': {
-    target: 'http://localhost:5555',
+    target: process.env.VITE_API_URL ?? 'http://localhost:8080',
     changeOrigin: true,
+  },
+  // Forwards /:code to the backend redirect handler.
+  // Static assets, Vite internals (/@..., /__...), and the root are served by Vite directly.
+  '^/[^/]+$': {
+    target: process.env.VITE_API_URL ?? 'http://localhost:8080',
+    changeOrigin: true,
+    bypass(req) { /* skip Vite-owned paths */ },
   },
 }
 ```
 
 This makes all API calls same-origin from the browser's perspective, so CORS is never
-triggered during development. In production the Go backend must send correct `CORS` headers
+triggered during development. In production the Go backend must send correct CORS headers
 (configured via `ALLOWED_ORIGINS` env var on the backend).
+
+To override the backend target locally, set `VITE_API_URL` in `frontend/.env.local`.
 
 ## Tech stack
 
@@ -116,7 +127,7 @@ inserts memoization where needed, replacing manual `useMemo` / `useCallback` cal
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_API_BASE_URL` | No | Origin of the Go server used to build redirect URLs. Defaults to `http://localhost:8080`. Set to the public backend URL in production. |
+| `VITE_API_URL` | No | Origin of the Go backend used by the Vite dev proxy. Defaults to `http://localhost:8080`. Only needed in development — has no effect on production builds. |
 
 All Vite env vars must start with `VITE_` to be accessible in browser code.
 

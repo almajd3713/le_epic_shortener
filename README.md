@@ -12,7 +12,7 @@ A self-hosted URL shortener built with Go, PostgreSQL, and React.
 
 ## Running locally
 
-**Prerequisites:** Go 1.22+, Node.js 20+, pnpm, a running PostgreSQL instance.
+**Prerequisites:** Go 1.25+, Node.js 20+, pnpm, a running PostgreSQL instance.
 
 ### Backend
 
@@ -50,7 +50,7 @@ pnpm install
 pnpm dev
 ```
 
-The dev server starts at `http://localhost:5173` and proxies `/api/*` to the Go backend at `http://localhost:5555`.
+The dev server starts at `http://localhost:5173` and proxies `/api/*` and `/:code` redirects to the Go backend. The target defaults to `http://localhost:8080`; override it by setting `VITE_API_URL` in `frontend/.env.local`.
 
 ## Running with Docker
 
@@ -79,11 +79,11 @@ Edit `infra/docker/.env` before starting:
 PORT=8080
 DATABASE_URL=postgres://shortener_user:password@db:5432/shortener
 ENV=development
-ALLOWED_ORIGINS=http://localhost:3000
-VITE_API_BASE_URL=http://localhost:8080
+ALLOWED_ORIGINS=http://localhost:5173
+BASE_URL=http://localhost:8080
 ```
 
-`VITE_API_BASE_URL` is injected as a Docker build arg and baked into the frontend bundle at build time. Change it and rebuild (`docker compose up --build`) if the backend is at a different address.
+`BASE_URL` is a **backend** runtime env var. The Go server uses it to construct the `short_url` field returned by `POST /api/shorten` — it is not baked into the frontend. Change it to match whatever hostname/port the backend is publicly reachable on.
 
 ## API
 
@@ -110,7 +110,7 @@ VITE_API_BASE_URL=http://localhost:8080
 ```json
 {
   "short_code": "axsnZ_BX",
-  "shortened_url": "localhost:5555/axsnZ_BX",
+  "short_url": "http://localhost:8080/axsnZ_BX",
   "created_at": "2026-03-06T12:00:00Z"
 }
 ```

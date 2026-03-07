@@ -2,7 +2,7 @@ import type { ShortenResponse, URLRecord } from '../types';
 
 // The Vite dev server proxies /api/* to the Go backend (see vite.config.ts),
 // so API calls use relative paths — no CORS issue in development.
-// Short URLs are built server-side and returned directly in API responses.
+// Short URLs are built server-side (using the backend's BASE_URL env var) and returned directly in API responses.
 
 
 /**
@@ -28,12 +28,10 @@ export async function shortenURL(longUrl: string): Promise<ShortenResponse> {
 
 /**
  * GET /api/urls
- * Returns null when the backend endpoint is not yet implemented (404).
- * See docs/backend-changes-required.md.
+ * Returns null on any non-OK response to avoid crashing the UI.
  */
 export async function listURLs(): Promise<URLRecord[] | null> {
   const res = await fetch('/api/urls');
-  if (res.status === 404) return null; // endpoint not yet available
-  if (!res.ok) throw new Error(`Failed to load URLs (${res.status})`);
+  if (!res.ok) return null;
   return (await res.json()) as URLRecord[];
 }

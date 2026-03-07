@@ -57,8 +57,8 @@ Client → ShortenerHandler.POST
                 └─ checks uniqueness via URLRepository.GetByCode
                 └─ retries if the code already exists (collision loop)
                 └─ URLRepository.Create → INSERT INTO urls RETURNING *
-           └─ returns { short_code, shortened_url, created_at }
-                shortened_url = request Host + "/" + short_code
+           └─ returns { short_code, short_url, created_at }
+                short_url = BASE_URL (from env via BaseURL middleware) + "/" + short_code
 ```
 
 ### Redirect (`GET /:code`)
