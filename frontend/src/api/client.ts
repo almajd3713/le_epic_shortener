@@ -2,7 +2,8 @@ import type { ShortenResponse, URLRecord } from '../types';
 
 // The Vite dev server proxies /api/* to the Go backend (see vite.config.ts),
 // so API calls use relative paths — no CORS issue in development.
-//
+// Short URLs are built server-side and returned directly in API responses.
+
 
 /**
  * POST /api/shorten

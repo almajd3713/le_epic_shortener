@@ -6,17 +6,19 @@ import (
 )
 
 type Config struct {
-	Port			  	string
-	DatabaseURL       	string
-	LogLevel          	string
-	Environment       	string
-	
-	AllowedOrigins		[]string
-	TrustedProxies		[]string
+	Port        string
+	BaseURL     string
+	DatabaseURL string
+	LogLevel    string
+	Environment string
+
+	AllowedOrigins []string
+	TrustedProxies []string
 }
 
 func Load() *Config {
 	port := ":" + os.Getenv("PORT")
+	baseURL := os.Getenv("BASE_URL")
 	databaseURL := os.Getenv("DATABASE_URL")
 	logLevel := os.Getenv("LOG_LEVEL")
 	environment := os.Getenv("ENV")
@@ -28,11 +30,12 @@ func Load() *Config {
 	trustedProxies := getOriginsFromEnv(trustedProxiesStr)
 
 	return &Config{
-		Port:			port,
-		DatabaseURL:	databaseURL,
-		LogLevel:		logLevel,
-		Environment:   	environment,
-		AllowedOrigins:	allowedOrigins,
+		Port:           port,
+		BaseURL:        baseURL,
+		DatabaseURL:    databaseURL,
+		LogLevel:       logLevel,
+		Environment:    environment,
+		AllowedOrigins: allowedOrigins,
 		TrustedProxies: trustedProxies,
 	}
 }
@@ -43,12 +46,12 @@ func getOriginsFromEnv(str string) []string {
 	}
 	origins := strings.Split(str, ",")
 	result := make([]string, 0, len(origins))
-    
-    for _, origin := range origins {
-        trimmed := strings.TrimSpace(origin)
-        if trimmed != "" {
-            result = append(result, trimmed)
-        }
-    }
-    return result
+
+	for _, origin := range origins {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }

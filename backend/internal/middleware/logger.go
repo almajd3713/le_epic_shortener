@@ -9,7 +9,7 @@ import (
 )
 
 func Logger(logger *slog.Logger) gin.HandlerFunc {
-	healthEndpoint := "/health"
+	healthEndpoint := "/ping"
 	return func(c *gin.Context) {
 		
 		start := time.Now()

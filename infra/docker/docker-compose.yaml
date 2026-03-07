@@ -8,6 +8,7 @@ services:
       - 8080:8080
     environment:
       - PORT=${PORT}
+      - BASE_URL=${BASE_URL}
       - DATABASE_URL=${DATABASE_URL}
       - ENV=${ENV}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
@@ -27,8 +28,6 @@ services:
     build:
       context: ../../frontend
       dockerfile: Dockerfile
-      args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
     ports:
       - 3000:80
     depends_on:

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { shortenURL, } from '../api/client';
+import { shortenURL } from '../api/client';
 import type { LinkItem } from '../types';
 
 interface Props {

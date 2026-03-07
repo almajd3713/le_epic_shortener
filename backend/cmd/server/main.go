@@ -82,11 +82,12 @@ func startServer() {
 	redirectHandler := handlers.NewRedirectHandler(redirectService)
 
 	// Routes
-	r := gin.Default()
+	r := gin.New()
 	r.SetTrustedProxies(cfg.TrustedProxies)
 
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger(logger))
+	r.Use(middleware.BaseURL(cfg.BaseURL))
 
 	// CORs
 	corsConfig := cors.DefaultConfig()

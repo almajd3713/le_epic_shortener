@@ -39,10 +39,12 @@ func (h *ShortenerHandler) POST(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to shorten URL"})
 		return
 	}
-	var res models.URLResponse
-	res.ShortCode = newUrl.ShortCode
-	res.ShortenedURL = c.Request.Host + "/" + newUrl.ShortCode
-	res.CreatedAt = newUrl.CreatedAt.Format("2006-01-02T15:04:05Z07:00")
+	baseURL, _ := c.Get("baseURL")
+	res := models.URLResponse{
+		ShortCode: newUrl.ShortCode,
+		ShortURL:  baseURL.(string) + "/" + newUrl.ShortCode,
+		CreatedAt: newUrl.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
 
 	reqLogger.Info("URL shortened successfully", "short_code", newUrl.ShortCode, "long_url", req.LongURL)
 	c.JSON(http.StatusOK, res)

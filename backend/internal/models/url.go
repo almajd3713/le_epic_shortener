@@ -25,7 +25,16 @@ type URLRequest struct {
 }
 
 type URLResponse struct {
-	ShortCode    string `json:"short_code"`
-	ShortenedURL string `json:"short_url"`
-	CreatedAt	 string `json:"created_at"`
+	ShortCode string `json:"short_code"`
+	ShortURL  string `json:"short_url"`
+	CreatedAt string `json:"created_at"`
+}
+
+// URLListItem is the response shape for GET /api/urls entries.
+type URLListItem struct {
+	ShortCode string  `json:"short_code"`
+	LongURL   string  `json:"long_url"`
+	ShortURL  string  `json:"short_url"`
+	CreatedAt string  `json:"created_at"`
+	ExpiresAt *string `json:"expires_at"`
 }

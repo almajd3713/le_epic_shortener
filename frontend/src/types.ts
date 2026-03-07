@@ -13,12 +13,11 @@ export interface ShortenResponse {
   created_at: string; // ISO 8601
 }
 
-// URLRecord mirrors the JSON shape that GET /api/urls will return once the
-// backend exposes that endpoint. See docs/backend-changes-required.md.
+// URLRecord mirrors the JSON shape returned by GET /api/urls.
 export interface URLRecord {
   short_code: string;
   long_url: string;
-  short_url: string
+  short_url: string;  // fully formed redirect URL, built server-side
   created_at: string;
   expires_at: string | null;
 }

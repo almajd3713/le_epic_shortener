@@ -7,10 +7,6 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# VITE_* vars must be present at build time — they get baked into the static bundle
-ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
 COPY . .
 RUN pnpm run build
 
