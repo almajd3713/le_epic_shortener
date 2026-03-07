@@ -9,6 +9,7 @@ type Config struct {
 	Port        string
 	BaseURL     string
 	DatabaseURL string
+	CacheURL	string
 	LogLevel    string
 	Environment string
 
@@ -20,6 +21,7 @@ func Load() *Config {
 	port := ":" + os.Getenv("PORT")
 	baseURL := os.Getenv("BASE_URL")
 	databaseURL := os.Getenv("DATABASE_URL")
+	cacheURL := os.Getenv("REDIS_URL")
 	logLevel := os.Getenv("LOG_LEVEL")
 	environment := os.Getenv("ENV")
 
@@ -33,6 +35,7 @@ func Load() *Config {
 		Port:           port,
 		BaseURL:        baseURL,
 		DatabaseURL:    databaseURL,
+		CacheURL:       cacheURL,
 		LogLevel:       logLevel,
 		Environment:    environment,
 		AllowedOrigins: allowedOrigins,
