@@ -43,8 +43,6 @@ func startServer() {
 		logLevel = slog.LevelInfo
 	}
 
-	print("Print level: " + logLevel.String() + "\n")
-
 	opts := &slog.HandlerOptions{
 		Level: logLevel,
 	}

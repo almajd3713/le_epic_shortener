@@ -27,7 +27,7 @@ export function ShortenForm({ onShortened }: Props) {
         longUrl: url,
         shortUrl: short_url,
         createdAt: created_at,
-        isActive: true,
+        isActive: true, // TODO: Make it client based
       };
       setResult(item);
       onShortened(item);

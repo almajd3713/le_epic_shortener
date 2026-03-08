@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"log/slog"
+	"time"
 )
 
 
@@ -27,7 +28,7 @@ func (r *RedirectorService) Redirect(c context.Context, shortCode string) (strin
 	}
 
 	// Store in cache for future requests
-	err = r.cacheSvc.Set(c, shortCode, url, 24*3600) // Cache for 24 hours
+	err = r.cacheSvc.Set(c, shortCode, url, 24 * time.Hour) // Cache for 24 hours
 	if err != nil {
 		r.logger.Error("failed to cache original URL", "error", err)
 	}

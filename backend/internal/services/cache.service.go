@@ -13,7 +13,7 @@ type cacheService struct {
 	cacheClient *redis.Client
 }
 
-func NewCacheService(cacheClient *redis.Client, logger *slog.Logger) (*cacheService) {
+func NewCacheService(cacheClient *redis.Client, logger *slog.Logger) ICacheService {
 	return &cacheService{
 		logger:      logger,
 		cacheClient: cacheClient,
@@ -35,9 +35,7 @@ func (c *cacheService) Get(ctx context.Context, key string) (string, error) {
 }
 
 func (c *cacheService) Set(ctx context.Context, key string, value string, expiresAt time.Duration) error {
-	timeLeft := time.Until(time.Now().Add(expiresAt))
-	c.logger.Debug("calculated time left for cache expiration", "time_left", timeLeft)
-	c.logger.Debug("setting value in cache", "key", key, "expires_at", timeLeft)
+	c.logger.Debug("setting value in cache", "key", key, "expires_at", expiresAt)
 	err := c.cacheClient.Set(ctx, key, value, expiresAt).Err()
 	if err != nil {
 		c.logger.Error("cache error", "error", err)
