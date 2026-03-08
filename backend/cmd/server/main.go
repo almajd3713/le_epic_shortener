@@ -74,14 +74,15 @@ func startServer() {
 		panic("Failed to connect to cache: " + err.Error())
 	}
 	defer cacheClient.Close()
+	cache := cache.NewCache(cacheClient)
 
 	// Repositories
 	urlRepo := repository.NewURLRepository(pool)
 
 	// Services
-	cacheService := services.NewCacheService(cacheClient, logger)
-	urlService := services.NewURLService(*urlRepo, cacheService, logger)
-	shortenerService := services.NewShortenerService(*urlRepo, cacheService, logger)
+	cacheService := services.NewCacheService(cache, logger)
+	urlService := services.NewURLService(urlRepo, cacheService, logger)
+	shortenerService := services.NewShortenerService(urlRepo, cacheService, logger)
 	redirectService := services.NewRedirectorService(urlService, cacheService, logger)
 
 	// Handlers

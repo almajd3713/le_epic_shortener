@@ -11,12 +11,12 @@ import (
 )
 
 type ShortenerService struct {
-	repo     repository.URLRepository
+	repo     repository.IURLRepository
 	cacheSvc ICacheService
 	logger   *slog.Logger
 }
 
-func NewShortenerService(repo repository.URLRepository, cacheSvc ICacheService, logger *slog.Logger) *ShortenerService {
+func NewShortenerService(repo repository.IURLRepository, cacheSvc ICacheService, logger *slog.Logger) *ShortenerService {
 	return &ShortenerService{repo: repo, cacheSvc: cacheSvc, logger: logger}
 }
 

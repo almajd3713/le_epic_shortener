@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-
-
 type RedirectorService struct {
 	urlSvc IURLService
 	cacheSvc ICacheService
