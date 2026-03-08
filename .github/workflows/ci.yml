@@ -39,7 +39,7 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_DB: shortener
         options: >-
-          --health-cmd pg_isready -U shortener_user -d shortener
+          --health-cmd "pg_isready -U shortener_user -d shortener"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -85,6 +85,8 @@ jobs:
 
     - name: Setup pnpm
       uses: pnpm/action-setup@v4
+      with:
+        version: 10
     
     - name: Cache pnpm store
       uses: actions/cache@v5
