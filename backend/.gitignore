@@ -16,6 +16,7 @@ cmd/server/server
 
 # Output of 'go coverage'
 *.out
+coverage.html
 
 # IDE / Editor
 .vscode/

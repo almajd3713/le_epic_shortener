@@ -10,12 +10,12 @@ import (
 )
 
 type URLService struct {
-	repo     repository.URLRepository
+	repo     repository.IURLRepository
 	cacheSvc ICacheService
 	logger   *slog.Logger
 }
 
-func NewURLService(repo repository.URLRepository, cacheSvc ICacheService, logger *slog.Logger) *URLService {
+func NewURLService(repo repository.IURLRepository, cacheSvc ICacheService, logger *slog.Logger) *URLService {
 	return &URLService{repo: repo, cacheSvc: cacheSvc, logger: logger}
 }
 

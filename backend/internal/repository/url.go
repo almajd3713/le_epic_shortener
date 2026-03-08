@@ -11,6 +11,15 @@ import (
 	"shortener.reeler.com/backend/internal/models"
 )
 
+type IURLRepository interface {
+	Create(shortCode, longURL string, expiresAt *time.Time) (*models.URL, error)
+	GetByCode(code string) (*models.URL, error)
+	GetAll() ([]models.URL, error)
+	ActivateByCode(code string) error
+	DeactivateByCode(code string) error
+	DeleteByCode(code string) error
+}
+
 type URLRepository struct {
 	pool   *pgxpool.Pool
 	logger *slog.Logger
