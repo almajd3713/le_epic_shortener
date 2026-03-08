@@ -5,7 +5,7 @@ on:
     tags: ['phase-*']
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 # Prevents concurrent runs of this workflow, ensuring that only the latest deployment is active
