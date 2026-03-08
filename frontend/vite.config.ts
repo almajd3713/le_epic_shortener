@@ -22,6 +22,10 @@ export default defineConfig({
         target: process.env.VITE_API_URL ?? 'http://localhost:8080',
         changeOrigin: true,
       },
+      '/geturl': {
+        target: process.env.VITE_API_URL ?? 'http://localhost:8080',
+        changeOrigin: true,
+      },
       // Forward short-code redirects (/:code) to the backend.
       // Regex excludes known frontend assets so the SPA still loads normally.
       '^/[^/]+$': {

@@ -20,7 +20,8 @@ frontend/
     │   └── client.ts           Typed fetch wrappers for the Go API
     └── components/
         ├── ShortenForm.tsx     URL input form + inline result display
-        └── LinksList.tsx       Table of all shortened links for the session
+        ├── LookupForm.tsx      Short-code lookup — fetches and displays the original URL
+        └── LinksList.tsx       Table of shortened links with toggle and delete actions
 ```
 
 ## Component hierarchy
@@ -30,7 +31,9 @@ App
 ├── ShortenForm          Controlled form; calls shortenURL() on submit
 │                        Shows the new short URL inline with a copy button on success
 │                        Bubbles the new LinkItem up via onShortened prop
-└── LinksList            Renders links[] as a table
+├── LookupForm           Short-code input; calls lookupURL() on submit
+│                        Displays the resolved original URL inline
+└── LinksList            Renders links[] as a table with status badge and action buttons
     └── CopyButton       (internal) Clipboard button with transient "✓ Copied" feedback
 ```
 
@@ -38,10 +41,15 @@ App
 
 `App` owns the single `links: LinkItem[]` array:
 
-- On mount, `listURLs()` fetches existing links from `GET /api/urls` and populates the list.
-  If the request fails, the list starts empty — no error is shown.
+- The list **does not** load automatically on mount. A "Load all URLs" button triggers `listURLs()`
+  and populates the list. If the request fails it is silently ignored.
 - When the user shortens a new URL, `ShortenForm` calls `onShortened(item)`, which prepends
   the new item to `links` so it appears at the top of the table immediately.
+- Each row in `LinksList` has an **Activate/Deactivate** toggle and a **Delete** button.
+  - Toggle calls `toggleURL(code, action)` then flips `isActive` in local state (optimistic update).
+  - Delete calls `deleteURL(code)` then filters the item out of local state.
+  - Both buttons show a busy indicator and are disabled while the request is in flight.
+- `LookupForm` is self-contained: it keeps its own result state and does not affect `links[]`.
 
 There is no client-side router. The app is a single view.
 
@@ -53,6 +61,7 @@ Vite dev proxy handles routing in development — no hardcoded ports in fetch ca
 ### `shortenURL(longUrl: string)`
 
 `POST /api/shorten` — submits a long URL and returns the response object from the backend.
+Always sends `expires_at` as an RFC3339 timestamp 1 hour in the future.
 The fully-formed `short_url` is built server-side using the backend's `BASE_URL` env var
 and returned directly in the response.
 
@@ -61,20 +70,27 @@ generic message including the HTTP status code. The caller (`ShortenForm`) surfa
 
 ### `listURLs()`
 
-`GET /api/urls` — returns the full list of active URLs, or `null` on failure.
+`GET /api/urls` — returns all URLs regardless of active/expired state, or `null` on failure.
 
-### `buildShortUrl(code: string)`
+### `lookupURL(code: string)`
 
-Constructs the full redirect URL: `VITE_API_BASE_URL + "/" + code`.
-The redirect must point directly at the Go server (not through the Vite proxy), so this uses the
-env var rather than a relative path.
+`GET /geturl/:code` — returns `{ long_url }` for a short code without triggering a redirect.
+Throws on non-OK responses so the caller can display an error.
+
+### `toggleURL(code: string, action: 'activate' | 'deactivate')`
+
+`PATCH /api/toggle/:code` — activates or deactivates a URL. Throws on failure.
+
+### `deleteURL(code: string)`
+
+`DELETE /api/delete/:code` — permanently removes a URL. Throws on failure.
 
 ## Types (`src/types.ts`)
 
 | Type | Usage |
 |------|-------|
-| `LinkItem` | In-app representation of a link — the shape components work with |
-| `URLRecord` | JSON shape returned by `GET /api/urls` — mirrors the Go `URL` struct |
+| `LinkItem` | In-app representation of a link — includes `isActive` and optional `expiresAt` |
+| `URLRecord` | JSON shape returned by `GET /api/urls` — mirrors the Go `URLListItem` struct |
 | `ShortenResponse` | JSON shape returned by `POST /api/shorten` — mirrors Go `URLResponse` |
 
 `URLRecord → LinkItem` conversion happens in `App.tsx` (`urlRecordToLinkItem`), keeping
@@ -89,6 +105,10 @@ The Vite dev server runs on `http://localhost:5173` by default.
 ```ts
 proxy: {
   '/api': {
+    target: process.env.VITE_API_URL ?? 'http://localhost:8080',
+    changeOrigin: true,
+  },
+  '/geturl': {
     target: process.env.VITE_API_URL ?? 'http://localhost:8080',
     changeOrigin: true,
   },
@@ -107,6 +127,8 @@ triggered during development. In production the Go backend must send correct COR
 (configured via `ALLOWED_ORIGINS` env var on the backend).
 
 To override the backend target locally, set `VITE_API_URL` in `frontend/.env.local`.
+
+For container ports, service names, and the production nginx setup see [infra.md](infra.md).
 
 ## Tech stack
 

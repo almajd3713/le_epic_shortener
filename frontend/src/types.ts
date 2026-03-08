@@ -4,6 +4,8 @@ export interface LinkItem {
   longUrl: string;
   shortUrl: string; // fully formed redirect URL, e.g. http://localhost:8080/abc123xy
   createdAt: string; // ISO 8601
+  isActive: boolean;
+  expiresAt?: string | null;
 }
 
 // ShortenResponse mirrors the JSON body returned by POST /api/shorten.
@@ -20,4 +22,5 @@ export interface URLRecord {
   short_url: string;  // fully formed redirect URL, built server-side
   created_at: string;
   expires_at: string | null;
+  is_active: boolean;
 }

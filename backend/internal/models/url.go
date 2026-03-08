@@ -24,6 +24,10 @@ type URLRequest struct {
 	ExpiresAt *time.Time `json:"expires_at"`
 }
 
+type URLUpdateRequest struct {
+	Action string `json:"action" validate:"required,oneof=activate deactivate"`
+}
+
 type URLResponse struct {
 	ShortCode string `json:"short_code"`
 	ShortURL  string `json:"short_url"`
@@ -37,4 +41,5 @@ type URLListItem struct {
 	ShortURL  string  `json:"short_url"`
 	CreatedAt string  `json:"created_at"`
 	ExpiresAt *string `json:"expires_at"`
+	IsActive  bool    `json:"is_active"`
 }

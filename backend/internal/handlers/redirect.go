@@ -26,7 +26,7 @@ func (r *RedirectHandler) GET(c *gin.Context) {
 	reqLogger := logger.(*slog.Logger).With("handler", "RedirectHandler")
 
 	shortCode := c.Param("code")
-	originalURL, err := r.service.Redirect(shortCode)
+	originalURL, err := r.service.Redirect(c, shortCode)
 	if err != nil {
 		reqLogger.Error("failed to redirect URL", "error", err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "URL not found"})

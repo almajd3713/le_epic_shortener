@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"shortener.reeler.com/backend/internal/config"
+	"shortener.reeler.com/backend/internal/cache"
 	"shortener.reeler.com/backend/internal/db"
 	"shortener.reeler.com/backend/internal/handlers"
 	"shortener.reeler.com/backend/internal/middleware"
@@ -54,7 +55,7 @@ func startServer() {
 	}
 	logger := slog.New(logHandler)
 
-	// Initialize Database
+	// Database
 	ctx := context.Background()
 	connString := cfg.DatabaseURL
 	pool, err := db.NewPool(ctx, connString)
@@ -62,19 +63,26 @@ func startServer() {
 		panic("Failed to connect to database: " + err.Error())
 	}
 	defer pool.Close()
-
 	// Run database migrations
 	if err := db.RunMigrations(ctx, pool); err != nil {
 		panic("Failed to run migrations: " + err.Error())
 	}
 
+	// Cache
+	cacheClient, err := cache.NewRedisClient(ctx, cfg.Cache)
+	if err != nil {
+		panic("Failed to connect to cache: " + err.Error())
+	}
+	defer cacheClient.Close()
+
 	// Repositories
 	urlRepo := repository.NewURLRepository(pool)
 
 	// Services
-	urlService := services.NewURLService(*urlRepo, logger)
-	shortenerService := services.NewShortenerService(*urlRepo, logger)
-	redirectService := services.NewRedirectorService(urlService, logger)
+	cacheService := services.NewCacheService(cacheClient, logger)
+	urlService := services.NewURLService(*urlRepo, cacheService, logger)
+	shortenerService := services.NewShortenerService(*urlRepo, cacheService, logger)
+	redirectService := services.NewRedirectorService(urlService, cacheService, logger)
 
 	// Handlers
 	urlHandler := handlers.NewURLHandler(urlService)
