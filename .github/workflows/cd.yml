@@ -54,7 +54,7 @@ jobs:
           GIT_TAG=${{ github.ref_name }}
           BUILD_DATE=${{ steps.meta.outputs.build-date }}
     
-    build-frontend:
+  build-frontend:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
