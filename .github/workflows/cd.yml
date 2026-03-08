@@ -148,5 +148,3 @@ jobs:
 
           Changes since last release:
           ${{ steps.changelog.outputs.changelog }}
-      draft: false
-      prerelease: false
