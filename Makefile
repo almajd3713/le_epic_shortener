@@ -57,11 +57,11 @@ clean:
 
 # Spin up dependency services (e.g., database) without starting the main application
 up-deps:
-	docker compose -f $(COMPOSE_FILE) up -d db redis
+	docker compose -f $(COMPOSE_FILE) up -d db cache
 
 # Stop only the dependency services
 down-deps:
-	docker compose -f $(COMPOSE_FILE) stop db redis
+	docker compose -f $(COMPOSE_FILE) stop db cache
 
 # Run unit tests
 test-unit:
@@ -72,5 +72,7 @@ test-unit:
 # Integration tests (requires the services to be running)
 test-integration: up-deps
 	cd backend && go test -v -race -tags=integration ./...; \
-	$(MAKE) down-deps
+	STATUS=$$?; \
+	$(MAKE) -C $(CURDIR) down-deps; \
+	exit $$STATUS
 
