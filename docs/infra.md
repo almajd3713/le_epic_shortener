@@ -178,3 +178,66 @@ node:20-alpine  →  pnpm install --frozen-lockfile  →  pnpm build
 ```
 
 The nginx config handles SPA routing (unknown paths → `index.html`).
+
+---
+
+## CI/CD
+
+Pipelines live under `.github/workflows/`.
+
+### CI Pipeline (`.github/workflows/ci.yml`)
+
+Runs on every **pull request targeting `main`**. Three jobs run in parallel:
+
+| Job | What it does |
+|-----|-------------|
+| `backend-unit-tests` | Checks out, sets up Go 1.25 (with module-cache caching), runs `make test-unit` |
+| `backend-integration-tests` | Spins up Postgres 15 and Redis 7 as service containers, then runs `go test -v -race -tags=integration ./...` directly inside `backend/` |
+| `frontend` | Sets up Node 25 and pnpm 10 (with pnpm-store caching), installs deps with `--frozen-lockfile`, then runs `pnpm build` |
+
+The integration-test job uses the same credentials as the local dev stack:
+
+| Service | Config |
+|---------|--------|
+| Postgres | `shortener_user / password / shortener`, health-checked with `pg_isready` |
+| Redis | Default port `6379`, health-checked with `redis-cli ping` |
+
+### CD Pipeline (`.github/workflows/cd.yml`)
+
+Triggered on any **tag push matching `phase-*`** (e.g. `phase-05`). Requires `contents: write` and `packages: write` permissions so it can push images to GHCR and create GitHub Releases.
+
+A `concurrency` group (`cd-pipeline`, `cancel-in-progress: false`) prevents two releases from racing; a second tag push queues rather than cancels.
+
+**Job graph:**
+
+```
+build-backend ──┐
+                ├──▶ verify ──▶ create-release
+build-frontend ─┘
+```
+
+#### `build-backend` / `build-frontend`
+
+Both jobs follow the same pattern:
+
+1. Set up Docker Buildx.
+2. Log in to **GHCR** (`ghcr.io`) using `GITHUB_TOKEN`.
+3. Use `docker/metadata-action` to produce two tags: the short commit SHA and `latest` (on the default branch).
+4. Build and push with `docker/build-push-action`, passing `GIT_COMMIT`, `GIT_REF`, `GIT_TAG`, and `BUILD_DATE` as build-args so the binary can embed version information.
+5. Layer cache is stored in GitHub Actions cache (`type=gha`).
+
+| Image | Registry path |
+|-------|---------------|
+| Backend | `ghcr.io/<owner>/<repo>/api` |
+| Frontend | `ghcr.io/<owner>/<repo>/frontend` |
+
+#### `verify`
+
+Pulls and runs `docker inspect` on both `latest` images to confirm they were pushed successfully before a release is created.
+
+#### `create-release`
+
+1. Fetches the full tag history (`fetch-depth: 0`).
+2. Finds the previous tag with `git describe --tags --abbrev=0`.
+3. Generates a changelog from `git log <prev-tag>..HEAD --pretty=format:"- %s (%h)"`.
+4. Creates a GitHub Release via `softprops/action-gh-release@v2` with the tag name, a human-readable title, and the generated changelog as the body.
