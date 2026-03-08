@@ -12,7 +12,7 @@ import (
 )
 
 type URLRepository struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
 	logger *slog.Logger
 }
 
@@ -53,8 +53,6 @@ func (r *URLRepository) GetAll() ([]models.URL, error) {
 		context.Background(),
 		`SELECT id, short_code, long_url, created_at, expires_at, is_active
 		 FROM urls
-		 WHERE is_active = TRUE
-		   AND (expires_at IS NULL OR expires_at > NOW())
 		 ORDER BY created_at DESC`,
 	)
 	if err != nil {
@@ -73,8 +71,25 @@ func (r *URLRepository) GetAll() ([]models.URL, error) {
 	return urls, rows.Err()
 }
 
+// Activates a short code (e.g. when reactivated manually, etc)
+func (r *URLRepository) ActivateByCode(code string) error {
+	tag, err := r.pool.Exec(
+		context.Background(),
+		`UPDATE urls SET is_active = TRUE
+		 WHERE short_code = $1 AND is_active = FALSE`,
+		code,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("URL not found or already active")
+	}
+	return nil
+}
+
 // Deactivates a short code (e.g. once expired)
-func (r *URLRepository) Deactivate(code string) error {
+func (r *URLRepository) DeactivateByCode(code string) error {
 	tag, err := r.pool.Exec(
 		context.Background(),
 		`UPDATE urls SET is_active = FALSE
@@ -86,6 +101,21 @@ func (r *URLRepository) Deactivate(code string) error {
 	}
 	if tag.RowsAffected() == 0 {
 		return errors.New("URL not found or already deactivated")
+	}
+	return nil
+}
+
+func (r *URLRepository) DeleteByCode(code string) error {
+	tag, err := r.pool.Exec(
+		context.Background(),
+		`DELETE FROM urls WHERE short_code = $1`,
+		code,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("URL not found")
 	}
 	return nil
 }

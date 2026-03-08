@@ -10,8 +10,15 @@ services:
       - PORT=${PORT}
       - DATABASE_URL=${DATABASE_URL}
       - ENV=development
+      - LOG_LEVEL=debug
       - ALLOWED_ORIGINS=http://localhost:5173
       - BASE_URL=http://localhost:5173
+      - TRUSTED_PROXIES=http://localhost:5173
+
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_MAX_RETRIES=${REDIS_MAX_RETRIES}
+      - REDIS_MIN_RETRY_BACKOFF=${REDIS_MIN_RETRY_BACKOFF}
+      - REDIS_MAX_RETRY_BACKOFF=${REDIS_MAX_RETRY_BACKOFF}
       
     volumes:
       - ../../backend:/app

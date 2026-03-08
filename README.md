@@ -7,6 +7,7 @@ A self-hosted URL shortener built with Go, PostgreSQL, and React.
 - **Backend** — Go, Gin, pgx
 - **Frontend** — React 19, Vite, Tailwind CSS v4, TypeScript
 - **Database** — PostgreSQL
+- **Cache** — Redis
 - **Dev tooling** — Air (live reload), pnpm
 - **Containerization** — Docker, Docker Compose
 
@@ -57,42 +58,24 @@ The dev server starts at `http://localhost:5173` and proxies `/api/*` and `/:cod
 **Prerequisites:** Docker with the Compose plugin.
 
 ```bash
-cd infra/docker
-docker compose up --build
+make dev        # development stack (live reload, volume mounts)
+make up         # production-shaped stack
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8080 |
-| PostgreSQL | localhost:5433 (host-mapped; internal port 5432) |
-| Redis | localhost:6379 |
-
-Container-to-container communication uses internal Docker network names (`db`, `cache`, `api`).
-The host-side PostgreSQL port is mapped to `5433` to avoid conflicting with a locally running instance.
-
-### Configuration
-
-Edit `infra/docker/.env` before starting:
-
-```env
-PORT=8080
-DATABASE_URL=postgres://shortener_user:password@db:5432/shortener
-ENV=development
-ALLOWED_ORIGINS=http://localhost:5173
-BASE_URL=http://localhost:8080
-```
-
-`BASE_URL` is a **backend** runtime env var. The Go server uses it to construct the `short_url` field returned by `POST /api/shorten` — it is not baked into the frontend. Change it to match whatever hostname/port the backend is publicly reachable on.
+See [docs/infra.md](docs/infra.md) for the full service map, port assignments, environment
+variables, Dockerfile descriptions, and all available `make` targets.
 
 ## API
 
-| Method | Path              | Description                              |
-|--------|-------------------|------------------------------------------|
-| `GET`  | `/ping`           | Health check — returns `{"message":"pong"}` |
-| `POST` | `/api/shorten`    | Shorten a URL                            |
-| `GET`  | `/api/urls`       | List all active shortened URLs           |
-| `GET`  | `/:code`          | Redirect to the original URL             |
+| Method | Path                  | Description                                      |
+|--------|-----------------------|--------------------------------------------------|
+| `GET`  | `/ping`               | Health check — returns `{"message":"pong"}`      |
+| `POST` | `/api/shorten`        | Shorten a URL                                    |
+| `GET`  | `/api/urls`           | List all shortened URLs (all states)             |
+| `GET`  | `/geturl/:code`       | Return the original long URL for a short code    |
+| `GET`  | `/:code`              | Redirect to the original URL                     |
+| `PATCH`| `/api/toggle/:code`   | Activate or deactivate a shortened URL           |
+| `DELETE`| `/api/delete/:code`  | Permanently delete a shortened URL               |
 
 ### POST `/api/shorten`
 
@@ -117,9 +100,36 @@ BASE_URL=http://localhost:8080
 
 ### GET `/api/urls`
 
-Returns a JSON array of all active, non-expired URLs ordered by creation date (newest first).
+Returns a JSON array of **all** shortened URLs (active and inactive, including expired) ordered by
+creation date (newest first).
+
+### GET `/geturl/:code`
+
+Returns the original long URL for a short code without triggering a redirect.
+
+**Response**
+
+```json
+{ "long_url": "https://example.com/very/long/path" }
+```
+
+Returns `404` if the code is unknown.
+
+### PATCH `/api/toggle/:code`
+
+Activates or deactivates a shortened URL.
+
+**Request body**
+
+```json
+{ "action": "activate" }   // or "deactivate"
+```
+
+### DELETE `/api/delete/:code`
+
+Permanently removes a shortened URL from the database.
 
 ### GET `/:code`
 
 Responds with `302 Found` and a `Location` header pointing to the original URL.
-Returns `404` if the code is unknown or expired.
+Returns `404` if the code is unknown, inactive, or expired.

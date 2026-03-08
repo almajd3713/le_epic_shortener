@@ -1,8 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ShortenForm } from './components/ShortenForm';
+import { LookupForm } from './components/LookupForm';
 import { LinksList } from './components/LinksList';
-import { listURLs } from './api/client';
+import { listURLs, toggleURL, deleteURL } from './api/client';
 import type { LinkItem, URLRecord } from './types';
 
 function urlRecordToLinkItem(record: URLRecord): LinkItem {
@@ -11,29 +12,41 @@ function urlRecordToLinkItem(record: URLRecord): LinkItem {
     longUrl: record.long_url,
     shortUrl: record.short_url,
     createdAt: record.created_at,
+    isActive: record.is_active,
+    expiresAt: record.expires_at,
   };
 }
 
 function App() {
   const [links, setLinks] = useState<LinkItem[]>([]);
+  const [loadingAll, setLoadingAll] = useState(false);
 
-  // On mount, attempt to load existing links from the backend.
-  // Returns null (404) until GET /api/urls is implemented — silently ignored.
-  useEffect(() => {
-    listURLs()
-      .then((records) => {
-        if (records) {
-          setLinks(records.map(urlRecordToLinkItem));
-        }
-      })
-      .catch(() => {
-        // Backend unavailable or endpoint not yet added — start with empty list.
-      });
-  }, []);
+  const handleLoadAll = async () => {
+    setLoadingAll(true);
+    try {
+      const records = await listURLs();
+      if (records) setLinks(records.map(urlRecordToLinkItem));
+    } catch {
+      // Backend unavailable — silently ignore
+    } finally {
+      setLoadingAll(false);
+    }
+  };
 
   const handleShortened = (item: LinkItem) => {
-    // Prepend so the most recently created link appears first.
     setLinks((prev) => [item, ...prev]);
+  };
+
+  const handleToggle = async (code: string, action: 'activate' | 'deactivate') => {
+    await toggleURL(code, action);
+    setLinks((prev) =>
+      prev.map((l) => (l.shortCode === code ? { ...l, isActive: action === 'activate' } : l)),
+    );
+  };
+
+  const handleDelete = async (code: string) => {
+    await deleteURL(code);
+    setLinks((prev) => prev.filter((l) => l.shortCode !== code));
   };
 
   return (
@@ -47,7 +60,20 @@ function App() {
         </header>
 
         <ShortenForm onShortened={handleShortened} />
-        <LinksList links={links} />
+        <LookupForm />
+
+        <div className="mt-6 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-zinc-300">All URLs</h2>
+          <button
+            onClick={handleLoadAll}
+            disabled={loadingAll}
+            className="text-sm bg-zinc-700 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-200 px-4 py-1.5 rounded-lg transition-colors"
+          >
+            {loadingAll ? 'Loading…' : 'Load all URLs'}
+          </button>
+        </div>
+
+        <LinksList links={links} onToggle={handleToggle} onDelete={handleDelete} />
       </div>
     </div>
   );
