@@ -39,11 +39,12 @@ backend/
 2. `config.Load()` reads all env vars into a `Config` struct — no env access beyond this point.
 3. A `slog.Logger` is configured from `LOG_LEVEL` and `ENV` (text handler in dev, JSON in production).
 4. A `pgxpool` connection pool is created from `DATABASE_URL`.
-5. `RunMigrations` applies any unapplied `.sql` files embedded in the binary.
-6. Dependencies flow down: `pool → repository → services → handlers`.
-7. CORS is configured from `ALLOWED_ORIGINS` and applied as middleware.
-8. `SetupRoutes` registers all routes on the Gin engine.
-9. The server listens on `PORT`.
+5. A Redis client is created from `REDIS_URL`.
+6. `RunMigrations` applies any unapplied `.sql` files embedded in the binary.
+7. Dependencies flow down: `pool → repository`, `redisClient → cacheService`, `repository + cacheService → services → handlers`.
+8. CORS is configured from `ALLOWED_ORIGINS` and applied as middleware.
+9. `SetupRoutes` registers all routes on the Gin engine.
+10. The server listens on `PORT`.
 
 ## Request lifecycle
 
@@ -51,14 +52,25 @@ backend/
 
 ```
 Client → ShortenerHandler.POST
-           └─ binds JSON body: { long_url, expires_at? }
-           └─ ShortenerService.ShortenURL(longUrl)
+           └─ binds JSON body: { long_url, expires_at? }  (expires_at is RFC3339)
+           └─ ShortenerService.ShortenURL(longUrl, expiresAt)
                 └─ generates an 8-char nanoid
                 └─ checks uniqueness via URLRepository.GetByCode
                 └─ retries if the code already exists (collision loop)
                 └─ URLRepository.Create → INSERT INTO urls RETURNING *
+                └─ cacheService.Set(code, longUrl, ttl)
+                     ttl = time.Until(expiresAt) if set, else 24h
            └─ returns { short_code, short_url, created_at }
                 short_url = BASE_URL (from env via BaseURL middleware) + "/" + short_code
+```
+
+### Lookup (`GET /geturl/:code`)
+
+```
+Client → URLHandler.GET
+           └─ reads :code path param
+           └─ URLService.GetOriginalURL(ctx, code)    (cache-aside, see Redirect below)
+           └─ returns { long_url }   (404 if not found)
 ```
 
 ### Redirect (`GET /:code`)
@@ -70,7 +82,7 @@ Client → RedirectHandler.GET
                 └─ URLRepository.GetByCode
                      └─ SELECT WHERE short_code = $1 AND is_active = TRUE
                           AND (expires_at IS NULL OR expires_at > NOW())
-           └─ 302 redirect to original URL  (404 if not found / expired)
+           └─ 302 redirect to original URL  (404 if not found / inactive / expired)
 ```
 
 ### List URLs (`GET /api/urls`)
@@ -79,9 +91,33 @@ Client → RedirectHandler.GET
 Client → URLHandler.GET_ALL
            └─ URLService.GetAllURLs()
                 └─ URLRepository.GetAll
-                     └─ SELECT WHERE is_active = TRUE AND not expired
-                          ORDER BY created_at DESC
-           └─ returns JSON array of URL objects
+                     └─ SELECT all rows ORDER BY created_at DESC
+                          (no active/expiry filter — all states returned)
+           └─ returns JSON array including is_active and expires_at fields
+```
+
+### Toggle (`PATCH /api/toggle/:code`)
+
+```
+Client → URLHandler.PATCH
+           └─ reads :code path param
+           └─ binds JSON body: { action: "activate" | "deactivate" }
+           └─ URLService.ActivateURL / DeactivateURL
+                └─ URLRepository.ActivateByCode / DeactivateByCode
+                     └─ UPDATE urls SET is_active = TRUE/FALSE WHERE short_code = $1
+                └─ cacheService.Delete(code)   — evict stale cache entry
+           └─ 200 OK with status message
+```
+
+### Delete (`DELETE /api/delete/:code`)
+
+```
+Client → URLHandler.DELETE
+           └─ reads :code path param
+           └─ URLService.DeleteURL
+                └─ URLRepository.DeleteByCode
+                     └─ DELETE FROM urls WHERE short_code = $1
+           └─ 200 OK with status message
 ```
 
 ## Models
@@ -103,24 +139,55 @@ type URL struct {
 
 ```go
 type URLResponse struct {
-    ShortCode    string `json:"short_code"`
-    ShortenedURL string `json:"shortened_url"` // full redirect URL: host + "/" + code
-    CreatedAt    string `json:"created_at"`
+    ShortCode string `json:"short_code"`
+    ShortURL  string `json:"short_url"`  // full redirect URL: BASE_URL + "/" + code
+    CreatedAt string `json:"created_at"`
 }
 ```
+
+`models.URLListItem` is the response shape for each entry in `GET /api/urls`:
+
+```go
+type URLListItem struct {
+    ShortCode string  `json:"short_code"`
+    LongURL   string  `json:"long_url"`
+    ShortURL  string  `json:"short_url"`
+    CreatedAt string  `json:"created_at"`
+    ExpiresAt *string `json:"expires_at"` // nil if no expiry
+    IsActive  bool    `json:"is_active"`
+}
+```
+
+`models.URLUpdateRequest` is the request body for `PATCH /api/toggle/:code`:
+
+```go
+type URLUpdateRequest struct {
+    Action string `json:"action"` // "activate" or "deactivate"
+}
+```
+
+## Cache
+
+All read paths go through a Redis-backed cache-aside layer (`cacheService`) via the `ICacheService` interface:
+
+```go
+type ICacheService interface {
+    Get(ctx context.Context, key string) (string, error)
+    Set(ctx context.Context, key string, value string, ttl time.Duration) error
+    Delete(ctx context.Context, key string) error
+    Flush(ctx context.Context) error
+}
+```
+
+- **On shorten** — the new `longURL` is written to the cache immediately. TTL equals `time.Until(expiresAt)` if an expiry was provided, otherwise 24 hours.
+- **On lookup/redirect** — the cache is checked first. On a miss the DB is queried and the result is cached with a TTL of `time.Until(expiresAt)` (already-expired entries are returned but not cached).
+- **On toggle (activate/deactivate)** — the cache entry is deleted so the next request gets fresh data from the DB.
+- A zero TTL (`0`) passed to Redis means the key has **no expiry**.
 
 ## Service interface
 
-`URLService` implements `IURLService`, which is the type `RedirectorService` depends on:
-
-```go
-type IURLService interface {
-    GetOriginalURL(shortenedURL string) (string, error)
-}
-```
-
-This keeps `RedirectorService` decoupled from the concrete `URLService` implementation — it only
-needs the redirect lookup capability. Always pass the interface value (not a pointer to interface).
+`URLService` and `ShortenerService` both depend on `ICacheService` (not on the concrete `cacheService`).
+This keeps services testable without a real Redis instance.
 
 ## Database
 
@@ -163,17 +230,24 @@ If `ALLOWED_ORIGINS` is empty, no origins are allowed — set it explicitly in `
 | `github.com/gin-gonic/gin` | HTTP router and middleware chain |
 | `github.com/gin-contrib/cors` | CORS middleware for Gin |
 | `github.com/jackc/pgx/v5` | PostgreSQL driver + connection pool |
+| `github.com/redis/go-redis/v9` | Redis client |
 | `github.com/matoous/go-nanoid/v2` | URL-safe random ID generation |
 | `github.com/google/uuid` | Request ID generation in the logger middleware |
 | `github.com/joho/godotenv` | Loads `.env` in development |
 
 ## Environment variables
 
+See [infra.md](infra.md) for the full variable reference including Redis settings.
+The backend reads all variables through `config.Load()` at startup — no direct `os.Getenv`
+calls beyond that point.
+
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `PORT` | No | Listen port, without colon — e.g. `5555` (prefixed automatically) |
+| `REDIS_URL` | Yes | Redis connection string, e.g. `redis://cache:6379` |
+| `BASE_URL` | Yes | Public base URL used to build `short_url` in responses |
+| `PORT` | No | Listen port, without colon — e.g. `8080` |
 | `ENV` | No | Set to `production` for JSON-formatted logs |
 | `LOG_LEVEL` | No | `DEBUG`, `INFO`, `WARN`, or `ERROR` (default `INFO`) |
-| `ALLOWED_ORIGINS` | Yes | Comma-separated CORS origins, e.g. `http://localhost:5173` |
+| `ALLOWED_ORIGINS` | Yes | Comma-separated CORS origins |
 | `TRUSTED_PROXIES` | No | Comma-separated list of trusted reverse proxy IPs |
