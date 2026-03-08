@@ -132,7 +132,7 @@ jobs:
       id: changelog
       run: |
         git fetch --tags
-        LAST_TAG=$(git describe --tags --abrev=0)
+        LAST_TAG=$(git describe --tags --abbrev=0)
         echo "Last tag: $LAST_TAG"
         CHANGELOG=$(git log $LAST_TAG..HEAD --pretty=format:"- %s (%h)")
         echo "Changelog:\n$CHANGELOG"
