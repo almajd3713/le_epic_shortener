@@ -65,8 +65,9 @@ down-deps:
 
 # Run unit tests
 test-unit:
-	cd backend && go tool cover -html=coverage.unit.out -o coverage.html
-	@echo "Coverage report generated: backend/coverage.html"
+	cd backend && go test -v -race -coverprofile=coverage.out ./... && \
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Unit tests completed. Coverage report generated at backend/coverage.html"
 
 # Integration tests (requires the services to be running)
 test-integration: up-deps
