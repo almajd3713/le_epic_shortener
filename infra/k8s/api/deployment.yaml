@@ -24,8 +24,12 @@ spec:
           envFrom:
             - configMapRef:
                 name: shortener-config
-            - secretRef:
-                name: shortener-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: shortener-secrets
+                  key: database_url
           readinessProbe:
             httpGet:
               path: /ping

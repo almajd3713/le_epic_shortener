@@ -6,7 +6,7 @@ metadata:
   namespace: shortener
 
 spec:
-  storageClassName: standard
+  storageClassName: local-path
   accessModes:
     - ReadWriteOnce
   resources:
