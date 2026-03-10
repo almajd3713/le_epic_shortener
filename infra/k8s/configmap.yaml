@@ -8,10 +8,10 @@ metadata:
 data:
   # Application
   PORT: "8080"
-  BASE_URL: "http://localhost:8080"
+  BASE_URL: "http://shortener.local"
   ENV: "production"
   LOG_LEVEL: "info"
-  ALLOWED_ORIGINS: "http://localhost:3000"
+  ALLOWED_ORIGINS: "http://shortener.local"
   TRUSTED_PROXIES: ""
 
   # Redis
