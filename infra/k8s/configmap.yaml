@@ -1,0 +1,21 @@
+apiVersion: v1
+
+kind: ConfigMap
+metadata:
+  name: shortener-config
+  namespace: shortener
+
+data:
+  # Application
+  PORT: "8080"
+  BASE_URL: "http://localhost:8080"
+  ENV: "production"
+  LOG_LEVEL: "info"
+  ALLOWED_ORIGINS: "http://localhost:3000"
+  TRUSTED_PROXIES: ""
+
+  # Redis
+  REDIS_URL: "redis://cache:6379"
+  REDIS_MAX_RETRIES: "5"
+  REDIS_MIN_RETRY_BACKOFF: "100ms"
+  REDIS_MAX_RETRY_BACKOFF: "1s"
