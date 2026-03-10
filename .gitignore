@@ -1,5 +1,6 @@
 local/
 **/.env
+infra/k8s/secrets.yaml
 
 # Go relevant files
 *.exe
