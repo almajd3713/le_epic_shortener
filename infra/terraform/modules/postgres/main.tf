@@ -1,17 +1,3 @@
-resource "kubernetes_persistent_volume_claim" "db_data" {
-  metadata {
-    name      = "db-data"
-    namespace = var.namespace
-  }
-  spec {
-    storage_class_name = var.storage_class
-    access_modes       = ["ReadWriteOnce"]
-    resources {
-      requests = { storage = "1Gi" }
-    }
-  }
-}
-
 resource "kubernetes_stateful_set" "postgres" {
   metadata {
     name      = "shortener"
@@ -31,13 +17,6 @@ resource "kubernetes_stateful_set" "postgres" {
         labels = { app = "postgres" }
       }
       spec {
-        volume {
-          name = "db-data"
-          persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.db_data.metadata[0].name
-          }
-        }
-
         container {
           name  = "db"
           image = "postgres:15"
@@ -86,6 +65,19 @@ resource "kubernetes_stateful_set" "postgres" {
             timeout_seconds       = 5
             failure_threshold     = 5
           }
+        }
+      }
+    }
+
+    volume_claim_template {
+      metadata {
+        name = "db-data"
+      }
+      spec {
+        storage_class_name = var.storage_class
+        access_modes       = ["ReadWriteOnce"]
+        resources {
+          requests = { storage = "1Gi" }
         }
       }
     }
