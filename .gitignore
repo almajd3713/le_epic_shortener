@@ -2,6 +2,14 @@ local/
 **/.env
 infra/k8s/secrets.yaml
 
+# Terraform — state contains plaintext secrets, tfvars may too
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
+
 # Go relevant files
 *.exe
 *.dll

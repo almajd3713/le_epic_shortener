@@ -1,17 +1,44 @@
 # Infrastructure
 
-All containerisation lives under `infra/docker/`. Two Compose files work together through
-Docker Compose's override mechanism: `docker-compose.yml` is the production-shaped base and
-`docker-compose.dev.yml` overrides it for local development.
+All infrastructure lives under `infra/`. There are three layers: Docker Compose for local dev,
+Kubernetes manifests for direct cluster deployment, and Terraform for declarative cluster management.
 
 ## Directory layout
 
 ```
 infra/
-└── docker/
-    ├── docker-compose.yml      Production-shaped base — builds images, exposes ports
-    ├── docker-compose.dev.yml  Dev override — live-reload, volume mounts, no image builds
-    └── .env                    Shared env vars consumed by both Compose files
+├── docker/
+│   ├── docker-compose.yml      Production-shaped base — builds images, exposes ports
+│   ├── docker-compose.dev.yml  Dev override — live-reload, volume mounts, no image builds
+│   └── .env                    Shared env vars consumed by both Compose files
+├── k8s/
+│   ├── namespace.yaml          shortener namespace
+│   ├── configmap.yaml          App env vars (PORT, BASE_URL, REDIS_*, etc.)
+│   ├── secrets.yaml            Database URL + Postgres credentials
+│   ├── ingress.yaml            NGINX Ingress — routes shortener.local to frontend/api
+│   ├── api/
+│   │   ├── deployment.yaml     Go API deployment
+│   │   └── service.yaml        ClusterIP service on port 8080
+│   ├── nginx/
+│   │   ├── configmap.yaml      nginx.conf injected into the frontend container
+│   │   ├── deployment.yaml     React SPA + nginx deployment
+│   │   └── service.yaml        ClusterIP service on port 80
+│   ├── postgres/
+│   │   ├── statefulset.yaml    PostgreSQL StatefulSet with volumeClaimTemplate
+│   │   ├── service.yaml        Headless service (clusterIP: None) named "db"
+│   │   └── pvc.yaml            Standalone PVC (used by raw-manifest path only)
+│   └── redis/
+│       ├── deployment.yaml     Redis deployment
+│       └── service.yaml        ClusterIP service named "cache"
+└── terraform/
+    ├── main.tf                 Root — namespace, configmap, secret, ingress, module calls
+    ├── variables.tf            Input variables with defaults
+    ├── outputs.tf
+    └── modules/
+        ├── api/                Go API deployment + service
+        ├── nginx/              Frontend deployment + service + nginx ConfigMap
+        ├── postgres/           PostgreSQL StatefulSet + headless service
+        └── redis/              Redis deployment + service
 ```
 
 The `backend/` and `frontend/` Dockerfiles live alongside their source:
@@ -25,9 +52,13 @@ frontend/
 └── Dockerfile        Multi-stage production build (node builder → nginx runtime)
 ```
 
-## Services
+---
 
-### `api` — Go backend
+## Docker Compose
+
+### Services
+
+#### `api` — Go backend
 
 | Mode | Image source |
 |------|-------------|
@@ -37,7 +68,7 @@ frontend/
 Port `8080` is exposed in both modes. The service declares a healthcheck against `GET /ping`
 and other services use `condition: service_healthy` to sequence startup correctly.
 
-### `frontend` — React SPA
+#### `frontend` — React SPA
 
 | Mode | Image source |
 |------|-------------|
@@ -46,10 +77,10 @@ and other services use `condition: service_healthy` to sequence startup correctl
 
 Production port: `3000 → 80`. Development port: `5173 → 5173`.
 
-The nginx config (`frontend/nginx.conf`) serves the SPA and falls back to `index.html` for
-unknown paths so client-side routing works correctly.
+The nginx config (`frontend/nginx.conf`) serves the SPA and proxies `/api/` and unknown paths
+to the Go backend.
 
-### `db` — PostgreSQL 15
+#### `db` — PostgreSQL 15
 
 Uses the official `postgres:15` image. Data is persisted in the `db_data` named volume.
 
@@ -62,7 +93,7 @@ Uses the official `postgres:15` image. Data is persisted in the `db_data` named 
 
 Healthcheck: `pg_isready -U shortener_user -d shortener`.
 
-### `cache` — Redis
+#### `cache` — Redis
 
 Uses the official `redis` image with no persistence configured (cache-only use case).
 
@@ -72,7 +103,7 @@ Uses the official `redis` image with no persistence configured (cache-only use c
 
 Healthcheck: `redis-cli ping`.
 
-## Port map
+### Port map
 
 | Service | Host port | Container port |
 |---------|-----------|----------------|
@@ -82,7 +113,7 @@ Healthcheck: `redis-cli ping`.
 | PostgreSQL | 5433 | 5432 |
 | Redis | 6379 | 6379 |
 
-## Startup order
+### Startup order
 
 ```
 db (healthy) ──┐
@@ -93,11 +124,143 @@ cache (healthy)┘
 Dev mode relaxes the frontend dependency to `service_started` so the Vite server can come up
 while the API is still initialising.
 
-## Volumes
+### Volumes
 
 | Volume | Purpose |
 |--------|---------|
 | `db_data` | PostgreSQL data directory — persists across `down`/`up` cycles |
+
+---
+
+## Kubernetes
+
+### Prerequisites
+
+- Minikube or k3s with the NGINX Ingress Controller enabled
+- `shortener.local` pointing to your cluster IP in `/etc/hosts`
+
+```bash
+minikube addons enable ingress
+echo "$(minikube ip)  shortener.local" | sudo tee -a /etc/hosts
+```
+
+### Workloads
+
+| Workload | Kind | Name | Notes |
+|----------|------|------|-------|
+| Go API | Deployment | `api` | `envFrom` loads ConfigMap + Secret; readiness on `GET /ping` |
+| React frontend | Deployment | `frontend` | nginx.conf injected via ConfigMap |
+| PostgreSQL | StatefulSet | `shortener` | `volumeClaimTemplate` with `local-path` StorageClass |
+| Redis | Deployment | `cache` | No persistence; readiness via `redis-cli ping` |
+
+### Services
+
+| Service | Type | Name | Port | Target |
+|---------|------|------|------|--------|
+| Go API | ClusterIP | `api` | 8080 | API pods |
+| Frontend | ClusterIP | `frontend` | 80 | Frontend pods |
+| PostgreSQL | Headless (ClusterIP: None) | `db` | 5432 | StatefulSet pods |
+| Redis | ClusterIP | `cache` | 6379 | Redis pods |
+
+Service names are meaningful — `REDIS_URL: redis://cache:6379` and `DATABASE_URL: ...@db:5432/...`
+resolve directly via Kubernetes DNS.
+
+### Ingress
+
+A single `kubernetes.io/ingress` resource (`shortener-ingress`) routes `shortener.local`:
+
+| Path | Backend service | Port |
+|------|----------------|------|
+| `/api` (Prefix) | `api` | 8080 |
+| `/` (Prefix) | `frontend` | 80 |
+
+Short-code redirects (`GET /:code`) hit the frontend nginx first, which falls back to the API
+via the `@backend` location block.
+
+### ConfigMap keys
+
+All keys in `shortener-config` map directly to the environment variable names that `config.go` reads:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `PORT` | `8080` | API listen port |
+| `BASE_URL` | `http://shortener.local` | Prefix for generated short URLs |
+| `ENV` | `production` | Logging mode (`development` = text, `production` = JSON) |
+| `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
+| `ALLOWED_ORIGINS` | `http://shortener.local` | CORS allowed origins (comma-separated) |
+| `TRUSTED_PROXIES` | `` | Gin trusted proxy IPs (comma-separated) |
+| `REDIS_URL` | `redis://cache:6379` | Redis connection string |
+| `REDIS_MAX_RETRIES` | `5` | Max Redis reconnect attempts |
+| `REDIS_MIN_RETRY_BACKOFF` | `100ms` | Min delay between retries |
+| `REDIS_MAX_RETRY_BACKOFF` | `1s` | Max delay between retries |
+
+### Secret keys
+
+`shortener-secrets` holds:
+
+| Key | Description |
+|-----|-------------|
+| `database_url` | Full Postgres connection string for the Go API |
+| `postgres_user` | Postgres username — also used by the StatefulSet container |
+| `postgres_password` | Postgres password |
+| `postgres_db` | Postgres database name |
+
+---
+
+## Terraform
+
+Terraform manages the same cluster resources as the raw manifests, using the `hashicorp/kubernetes`
+provider with `WaitForDefaultServiceAccount = false` (no cloud account required).
+
+### Modules
+
+| Module | Path | Manages |
+|--------|------|---------|
+| `postgres` | `modules/postgres` | StatefulSet, headless service; PVC via `volume_claim_template` |
+| `redis` | `modules/redis` | Deployment, ClusterIP service |
+| `api` | `modules/api` | Deployment (with `envFrom`), ClusterIP service |
+| `nginx` | `modules/nginx` | Deployment, ClusterIP service, nginx ConfigMap |
+
+Root `main.tf` manages: namespace, shared ConfigMap, shared Secret, and Ingress resource.
+
+### Key variables (`variables.tf`)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `base_url` | `http://shortener.local` | Injected into ConfigMap as `BASE_URL` |
+| `allowed_origins` | `http://shortener.local` | Injected into ConfigMap as `ALLOWED_ORIGINS` |
+| `app_port` | `8080` | API container port |
+| `environment` | `production` | Injected as `ENV` |
+| `log_level` | `info` | Injected as `LOG_LEVEL` |
+| `database_url` | — | Full Postgres connection string |
+| `postgres_user` | — | Postgres username |
+| `postgres_password` | — | Postgres password (sensitive) |
+| `postgres_db` | — | Postgres database name |
+| `storage_class` | `local-path` | StorageClass for the Postgres PVC |
+
+### Usage
+
+```bash
+cd infra/terraform
+terraform init
+terraform apply          # uses variable defaults
+```
+
+Override values in `terraform.tfvars`:
+
+```hcl
+base_url          = "http://shortener.local"
+allowed_origins   = "http://shortener.local"
+postgres_password = "changeme"
+```
+
+### StorageClass note
+
+The default `local-path` StorageClass uses `VolumeBindingMode: WaitForFirstConsumer`. The Postgres
+StatefulSet uses a `volume_claim_template` (not a standalone PVC resource) so that the PVC is
+created at pod-scheduling time — avoiding a deadlock where Terraform waits on a PVC that can't
+bind until a pod exists.
+
 | `go-mod-cache` | Go module cache shared into the dev API container |
 | `node-modules` | `node_modules` for the dev frontend container |
 
