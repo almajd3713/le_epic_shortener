@@ -10,6 +10,8 @@ A self-hosted URL shortener built with Go, PostgreSQL, and React.
 - **Cache** — Redis
 - **Dev tooling** — Air (live reload), pnpm
 - **Containerization** — Docker, Docker Compose
+- **Orchestration** — Kubernetes (Minikube / k3s)
+- **IaC** — Terraform (kubernetes provider)
 
 ## Running locally
 
@@ -64,6 +66,54 @@ make up         # production-shaped stack
 
 See [docs/infra.md](docs/infra.md) for the full service map, port assignments, environment
 variables, Dockerfile descriptions, and all available `make` targets.
+
+## Running on Kubernetes
+
+**Prerequisites:** a running cluster (Minikube or k3s) with the NGINX Ingress Controller enabled.
+
+```bash
+# Minikube — enable ingress addon once
+minikube addons enable ingress
+```
+
+Add the cluster hostname to `/etc/hosts`:
+
+```
+$(minikube ip)   shortener.local
+```
+
+### Option A — Terraform (recommended)
+
+```bash
+cd infra/terraform
+terraform init
+terraform apply
+```
+
+All variables have sensible defaults. Override per-environment values with a `terraform.tfvars` file:
+
+```hcl
+base_url          = "http://shortener.local"
+allowed_origins   = "http://shortener.local"
+postgres_password = "changeme"
+```
+
+### Option B — Raw manifests
+
+```bash
+kubectl apply -f infra/k8s/namespace.yaml
+kubectl apply -f infra/k8s/secrets.yaml
+kubectl apply -f infra/k8s/configmap.yaml
+kubectl apply -f infra/k8s/postgres/
+kubectl apply -f infra/k8s/redis/
+kubectl apply -f infra/k8s/api/
+kubectl apply -f infra/k8s/nginx/
+kubectl apply -f infra/k8s/ingress.yaml
+```
+
+The app will be available at `http://shortener.local` once all pods are ready.
+
+See [docs/infra.md](docs/infra.md) for the full Kubernetes and Terraform reference.
 
 ## API
 
