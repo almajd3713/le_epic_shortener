@@ -8,11 +8,12 @@ import (
 
 type RedirectorService struct {
 	urlSvc IURLService
+	clickSvc IClickService
 	cacheSvc ICacheService
 	logger *slog.Logger
 }
 
-func NewRedirectorService(urlSvc IURLService, cacheSvc ICacheService, logger *slog.Logger) *RedirectorService {
+func NewRedirectorService(urlSvc IURLService, clickSvc IClickService, cacheSvc ICacheService, logger *slog.Logger) *RedirectorService {
 	return &RedirectorService{urlSvc: urlSvc, cacheSvc: cacheSvc, logger: logger}
 }
 
@@ -23,6 +24,12 @@ func (r *RedirectorService) Redirect(c context.Context, shortCode string) (strin
 	if err != nil {
 		r.logger.Error("failed to redirect URL", "error", err)
 		return "", err
+	}
+
+	// Record the click
+	err = r.clickSvc.RecordClick(c, shortCode)
+	if err != nil {
+		r.logger.Error("failed to record click", "error", err)
 	}
 
 	// Store in cache for future requests

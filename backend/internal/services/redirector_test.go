@@ -13,9 +13,10 @@ import (
 func TestRedirectorService_Redirect(t *testing.T) {
 	mockURLSvc := urlMocks.NewMockURLRepo()
 	mockCache := serviceMocks.NewMockCacheService()
+	mockClickSvc := serviceMocks.NewMockClickService()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	redirector := NewRedirectorService(mockURLSvc, mockCache, logger)
+	redirector := NewRedirectorService(mockURLSvc, mockClickSvc, mockCache, logger)
 
 	// First, create a short code for testing
 	shortCode := "abc123"
