@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { LinkItem } from '../types';
+import { AnalyticsView } from './AnalyticsView';
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -32,6 +33,8 @@ interface Props {
 
 export function LinksList({ links, onToggle, onDelete }: Props) {
   const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [analyticsCode, setAnalyticsCode] = useState<string | null>(null);
+  const analyticsLink = analyticsCode ? links.find((l) => l.shortCode === analyticsCode) : null;
 
   if (links.length === 0) return null;
 
@@ -45,7 +48,15 @@ export function LinksList({ links, onToggle, onDelete }: Props) {
   };
 
   return (
-    <div className="mt-6 bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
+    <>
+      {analyticsLink && (
+        <AnalyticsView
+          shortCode={analyticsLink.shortCode}
+          shortUrl={analyticsLink.shortUrl}
+          onClose={() => setAnalyticsCode(null)}
+        />
+      )}
+      <div className="mt-6 bg-zinc-800 rounded-xl border border-zinc-700 overflow-hidden">
       <div className="px-6 py-4 border-b border-zinc-700">
         <h2 className="text-lg font-semibold text-zinc-100">
           URLs{' '}
@@ -108,6 +119,12 @@ export function LinksList({ links, onToggle, onDelete }: Props) {
                     <div className="flex items-center gap-2">
                       <CopyButton text={link.shortUrl} />
                       <button
+                        onClick={() => setAnalyticsCode(link.shortCode)}
+                        className="text-xs border rounded px-2 py-0.5 transition-colors text-sky-400 hover:text-sky-200 border-sky-800 hover:border-sky-500"
+                      >
+                        Analytics
+                      </button>
+                      <button
                         disabled={isBusy}
                         onClick={withBusy(
                           link.shortCode,
@@ -133,5 +150,6 @@ export function LinksList({ links, onToggle, onDelete }: Props) {
         </table>
       </div>
     </div>
+    </>
   );
 }

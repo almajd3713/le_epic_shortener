@@ -1,4 +1,4 @@
-import type { ShortenResponse, URLRecord } from '../types';
+import type { Click, ShortenResponse, URLRecord } from '../types';
 
 // The Vite dev server proxies /api/* to the Go backend (see vite.config.ts),
 // so API calls use relative paths — no CORS issue in development.
@@ -81,4 +81,31 @@ export async function deleteURL(code: string): Promise<void> {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Request failed (${res.status})`);
   }
+}
+
+/**
+ * GET /api/clicks/:code
+ * Returns all click records for a short code.
+ */
+export async function getClicks(code: string): Promise<Click[]> {
+  const res = await fetch(`/api/clicks/${encodeURIComponent(code)}`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Request failed (${res.status})`);
+  }
+  return (await res.json()) as Click[];
+}
+
+/**
+ * GET /api/clicks/:code/count
+ * Returns the total click count for a short code.
+ */
+export async function getClickCount(code: string): Promise<number> {
+  const res = await fetch(`/api/clicks/${encodeURIComponent(code)}/count`);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Request failed (${res.status})`);
+  }
+  const data = (await res.json()) as { count: number };
+  return data.count;
 }
