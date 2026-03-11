@@ -24,3 +24,10 @@ export interface URLRecord {
   expires_at: string | null;
   is_active: boolean;
 }
+
+// Click mirrors the JSON shape returned by GET /api/clicks/:code.
+export interface Click {
+  id: number;
+  short_code: string;
+  clicked_at: string; // ISO 8601
+}
