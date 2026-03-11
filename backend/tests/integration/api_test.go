@@ -88,20 +88,23 @@ func newSuite() (*suite, error) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
 
 	urlRepo := repository.NewURLRepository(pool)
+	clickRepo := repository.NewClickRepository(pool)
 	cacheSvc := services.NewCacheService(cacheInst, logger)
 	urlSvc := services.NewURLService(urlRepo, cacheSvc, logger)
 	shortenerSvc := services.NewShortenerService(urlRepo, cacheSvc, logger)
-	redirectSvc := services.NewRedirectorService(urlSvc, cacheSvc, logger)
+	clickSvc := services.NewClickService(clickRepo, logger)
+	redirectSvc := services.NewRedirectorService(urlSvc, clickSvc, cacheSvc, logger)
 
 	urlHandler := handlers.NewURLHandler(urlSvc)
 	shortenerHandler := handlers.NewShortenerHandler(shortenerSvc)
 	redirectHandler := handlers.NewRedirectHandler(redirectSvc)
+	clickHandler := handlers.NewClickHandler(clickSvc)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.BaseURL(testBaseURL))
-	server.SetupRoutes(r, *urlHandler, *shortenerHandler, *redirectHandler)
+	server.SetupRoutes(r, *urlHandler, *shortenerHandler, *redirectHandler, *clickHandler)
 
 	return &suite{
 		router:     r,
@@ -120,6 +123,9 @@ func (s *suite) teardown() {
 func (s *suite) reset(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
+	if _, err := s.pool.Exec(ctx, "DELETE FROM clicks"); err != nil {
+		t.Fatalf("reset: DELETE FROM clicks: %v", err)
+	}
 	if _, err := s.pool.Exec(ctx, "DELETE FROM urls"); err != nil {
 		t.Fatalf("reset: DELETE FROM urls: %v", err)
 	}
