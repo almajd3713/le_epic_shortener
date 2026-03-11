@@ -15,3 +15,7 @@ type ICacheService interface {
 	Delete(ctx context.Context, key string) error
 	Flush(ctx context.Context) error
 }
+
+type IClickService interface {
+	RecordClick(ctx context.Context, shortCode string) error
+}

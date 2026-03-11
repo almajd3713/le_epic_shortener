@@ -78,12 +78,14 @@ func startServer() {
 
 	// Repositories
 	urlRepo := repository.NewURLRepository(pool)
+	clickRepo := repository.NewClickRepository(pool)
 
 	// Services
 	cacheService := services.NewCacheService(cache, logger)
 	urlService := services.NewURLService(urlRepo, cacheService, logger)
+	clickService := services.NewClickService(clickRepo, logger)
 	shortenerService := services.NewShortenerService(urlRepo, cacheService, logger)
-	redirectService := services.NewRedirectorService(urlService, cacheService, logger)
+	redirectService := services.NewRedirectorService(urlService, clickService, cacheService, logger)
 
 	// Handlers
 	urlHandler := handlers.NewURLHandler(urlService)
