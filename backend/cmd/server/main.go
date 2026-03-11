@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 
-	"shortener.reeler.com/backend/internal/config"
 	"shortener.reeler.com/backend/internal/cache"
+	"shortener.reeler.com/backend/internal/config"
 	"shortener.reeler.com/backend/internal/db"
 	"shortener.reeler.com/backend/internal/handlers"
 	"shortener.reeler.com/backend/internal/middleware"
@@ -91,6 +91,7 @@ func startServer() {
 	urlHandler := handlers.NewURLHandler(urlService)
 	shortenerHandler := handlers.NewShortenerHandler(shortenerService)
 	redirectHandler := handlers.NewRedirectHandler(redirectService)
+	clickHandler := handlers.NewClickHandler(clickService)
 
 	// Routes
 	r := gin.New()
@@ -113,6 +114,7 @@ func startServer() {
 		*urlHandler,
 		*shortenerHandler,
 		*redirectHandler,
+		*clickHandler,
 	)
 
 	PORT := cfg.Port

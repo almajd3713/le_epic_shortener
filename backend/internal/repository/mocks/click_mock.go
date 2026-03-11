@@ -15,9 +15,13 @@ func NewMockClickRepo() *MockClickRepo {
 	return &MockClickRepo{store: make(map[string]int)}
 }
 
-func (m *MockClickRepo) Create(shortCode string) error {
+func (m *MockClickRepo) Create(shortCode string) (*models.Click, error) {
 	m.store[shortCode]++
-	return nil
+	return &models.Click{
+		ID:        int64(m.store[shortCode]),
+		ShortCode: shortCode,
+		ClickedAt: time.Now(),
+	}, nil
 }
 
 func (m *MockClickRepo) GetByCode(code string) ([]*models.Click, error) {
