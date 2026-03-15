@@ -64,6 +64,11 @@ make dev        # development stack (live reload, volume mounts)
 make up         # production-shaped stack
 ```
 
+When running via Docker Compose, observability endpoints are available at:
+
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3001` (default login: `admin` / `admin`)
+
 See [docs/infra.md](docs/infra.md) for the full service map, port assignments, environment
 variables, Dockerfile descriptions, and all available `make` targets.
 

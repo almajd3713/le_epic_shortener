@@ -103,6 +103,32 @@ Uses the official `redis` image with no persistence configured (cache-only use c
 
 Healthcheck: `redis-cli ping`.
 
+#### `prometheus` — Metrics scraper
+
+Uses `prom/prometheus` with a local config mounted from
+`infra/docker/prometheus/prometheus.yml`.
+
+| Setting | Value |
+|---------|-------|
+| Host port | `9090` |
+| Scrape target | `api:8080/metrics` |
+
+Prometheus stores time-series data in the `prometheus_data` named volume.
+
+#### `grafana` — Metrics dashboard
+
+Uses `grafana/grafana` with provisioning mounted from
+`infra/docker/grafana/provisioning/`.
+
+| Setting | Value |
+|---------|-------|
+| Host port | `3001` (container `3000`) |
+| Default user | `admin` (`GRAFANA_ADMIN_USER`) |
+| Default password | `admin` (`GRAFANA_ADMIN_PASSWORD`) |
+
+A Prometheus datasource is provisioned automatically and points to
+`http://prometheus:9090`. Grafana data is persisted in `grafana_data`.
+
 ### Port map
 
 | Service | Host port | Container port |
@@ -112,6 +138,8 @@ Healthcheck: `redis-cli ping`.
 | Frontend (dev) | 5173 | 5173 |
 | PostgreSQL | 5433 | 5432 |
 | Redis | 6379 | 6379 |
+| Prometheus | 9090 | 9090 |
+| Grafana | 3001 | 3000 |
 
 ### Startup order
 
@@ -119,6 +147,8 @@ Healthcheck: `redis-cli ping`.
 db (healthy) ──┐
                ├──▶ api (healthy) ──▶ frontend
 cache (healthy)┘
+
+api (healthy) ──▶ prometheus ──▶ grafana
 ```
 
 Dev mode relaxes the frontend dependency to `service_started` so the Vite server can come up
@@ -129,6 +159,8 @@ while the API is still initialising.
 | Volume | Purpose |
 |--------|---------|
 | `db_data` | PostgreSQL data directory — persists across `down`/`up` cycles |
+| `prometheus_data` | Prometheus TSDB storage |
+| `grafana_data` | Grafana dashboards, users, and settings |
 
 ---
 
@@ -284,6 +316,8 @@ The `.env` file at `infra/docker/.env` is loaded by Docker Compose and injected 
 | `REDIS_MAX_RETRIES` | `5` | Maximum Redis command retries on transient errors |
 | `REDIS_MIN_RETRY_BACKOFF` | `100ms` | Minimum backoff between Redis retries |
 | `REDIS_MAX_RETRY_BACKOFF` | `1s` | Maximum backoff between Redis retries |
+| `GRAFANA_ADMIN_USER` | `admin` | Grafana admin username |
+| `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana admin password |
 
 > `BASE_URL` must match the public address of the **backend** — it is embedded in the
 > `short_url` field of API responses so clients can construct working redirect links.
@@ -305,8 +339,8 @@ summary. Common targets:
 | `make restart` | `docker compose … restart` | Restart all running containers |
 | `make logs` | `docker compose … logs -f` | Tail all service logs |
 | `make clean` | `down -v --remove-orphans` + rmi | Remove containers, volumes, and images |
-| `make up-deps` | up `db` + `redis` only | Start dependency services without the app |
-| `make down-deps` | stop `db` + `redis` | Stop only the dependency services |
+| `make up-deps` | up `db` + `redis` + `prometheus` + `grafana` | Start dependency and observability services without the app |
+| `make down-deps` | stop `db` + `redis` + `prometheus` + `grafana` | Stop dependency and observability services |
 | `make test-unit` | `go tool cover …` | Generate HTML coverage report from existing unit run |
 | `make test-integration` | up-deps + go test + down-deps | Run integration tests against live services |
 
