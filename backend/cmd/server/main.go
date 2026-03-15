@@ -9,6 +9,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"shortener.reeler.com/backend/internal/cache"
 	"shortener.reeler.com/backend/internal/config"
@@ -93,6 +94,10 @@ func startServer() {
 	redirectHandler := handlers.NewRedirectHandler(redirectService)
 	clickHandler := handlers.NewClickHandler(clickService)
 
+	// Metrics
+	metricsRegistry := prometheus.NewRegistry()
+	middleware.InitializeMetrics(metricsRegistry)
+
 	// Routes
 	r := gin.New()
 	r.SetTrustedProxies(cfg.TrustedProxies)
@@ -100,6 +105,7 @@ func startServer() {
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.BaseURL(cfg.BaseURL))
+	r.Use(middleware.Metrics())
 
 	// CORs
 	corsConfig := cors.DefaultConfig()
@@ -115,6 +121,7 @@ func startServer() {
 		*shortenerHandler,
 		*redirectHandler,
 		*clickHandler,
+		metricsRegistry,
 	)
 
 	PORT := cfg.Port
