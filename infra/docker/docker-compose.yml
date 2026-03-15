@@ -11,7 +11,13 @@ services:
       - BASE_URL=${BASE_URL}
       - DATABASE_URL=${DATABASE_URL}
       - ENV=${ENV}
+      - LOG_LEVEL=${LOG_LEVEL}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_MAX_RETRIES=${REDIS_MAX_RETRIES}
+      - REDIS_MIN_RETRY_BACKOFF=${REDIS_MIN_RETRY_BACKOFF}
+      - REDIS_MAX_RETRY_BACKOFF=${REDIS_MAX_RETRY_BACKOFF}
     depends_on:
       db:
         condition: service_healthy
@@ -64,5 +70,36 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+    depends_on:
+      api:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3001:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+
 volumes:
   db_data:
+  prometheus_data:
+  grafana_data:

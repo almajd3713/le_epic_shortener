@@ -15,8 +15,8 @@ help:
 	@echo "  build         	- Build the services (useful if you have made changes to the Dockerfiles)"
 	@echo "  dev-build     	- Build and start the services in development mode"
 	@echo "  clean         	- Stop and remove all containers, networks, and volumes"
-	@echo "  up-deps       	- Spin up dependency services (e.g., database) without starting the main application"
-	@echo "  down-deps     	- Stop only the dependency services"
+	@echo "  up-deps       	- Spin up dependency and observability services without starting the main application"
+	@echo "  down-deps     	- Stop dependency and observability services"
 	@echo "  test-unit     	- Run unit tests and generate coverage report"
 	@echo "  test-integration 	- Run integration tests (requires the services to be running)"
 	@echo "  help          	- Display this help message"
@@ -57,11 +57,11 @@ clean:
 
 # Spin up dependency services (e.g., database) without starting the main application
 up-deps:
-	docker compose -f $(COMPOSE_FILE) up -d db cache
+	docker compose -f $(COMPOSE_FILE) up -d db cache prometheus grafana
 
 # Stop only the dependency services
 down-deps:
-	docker compose -f $(COMPOSE_FILE) stop db cache
+	docker compose -f $(COMPOSE_FILE) stop db cache prometheus grafana
 
 # Run unit tests
 test-unit:
